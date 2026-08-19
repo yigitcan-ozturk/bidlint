@@ -225,7 +225,7 @@ def parse_vendor_facts(path: str | Path) -> list[VendorFact]:
 
             label_only = _LABEL_ONLY.match(line)
             if label_only and index + 1 < len(lines):
-                next_line_no, next_line = lines[index + 1]
+                _, next_line = lines[index + 1]
                 if len(next_line) <= 120 and not _SECTION.match(next_line) and not _KEY_VALUE.match(next_line):
                     facts.append(
                         _make_vendor_fact(
@@ -240,7 +240,7 @@ def parse_vendor_facts(path: str | Path) -> list[VendorFact]:
                     continue
 
             if _looks_like_label(line) and index + 1 < len(lines):
-                next_line_no, next_line = lines[index + 1]
+                _, next_line = lines[index + 1]
                 if _NUMERIC_VALUE.fullmatch(next_line):
                     facts.append(_make_vendor_fact(path, page, line_no, line, next_line))
                     index += 2
