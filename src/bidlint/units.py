@@ -40,6 +40,8 @@ _ALIASES = {
     "m^3/s": "m³/s",
     "l/sec": "l/s",
     "lps": "l/s",
+    "l/minute": "l/min",
+    "lpm": "l/min",
 }
 
 _UNITS = {
@@ -54,6 +56,7 @@ _UNITS = {
     "cm": UnitDefinition("length", 0.01),
     "m": UnitDefinition("length", 1.0),
     "l/s": UnitDefinition("flow", 0.001),
+    "l/min": UnitDefinition("flow", 0.001 / 60.0),
     "m³/s": UnitDefinition("flow", 1.0),
     "m³/h": UnitDefinition("flow", 1.0 / 3600.0),
 }
@@ -71,7 +74,11 @@ def convert_value(value: float, from_unit: str | None, to_unit: str | None) -> f
     source = canonical_unit(from_unit)
     target = canonical_unit(to_unit)
 
-    if source is None or target is None or source == target:
+    if source is None and target is None:
+        return value
+    if source is None or target is None:
+        return None
+    if source == target:
         return value
 
     # Celsius is intentionally treated only as a label-equivalence case.
