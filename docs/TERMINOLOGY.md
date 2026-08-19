@@ -8,7 +8,7 @@ The terminology layer is **not** a general engineering ontology. It does not ass
 
 Built-in aliases are grouped by domain:
 
-- `core` — ingress protection, operating temperature and noise terminology
+- `core` — explicit ingress-protection, operating-temperature and lexical noise variants
 - `mechanical` — spelling/format variants for flow and rotational speed
 - `electrical` — conservative motor-power naming variants
 - `materials` — material-of-construction naming variants
@@ -31,16 +31,17 @@ Some terms are intentionally **not** aliases even when they may be related in a 
 For example:
 
 ```text
-protection class != ip rating
+protection class      != ip rating
+sound pressure level  != noise level
 ```
 
-`protection class` can refer to electrical protection or insulation classes, while an IP rating specifically describes ingress protection. Mapping the two automatically could create a false compliance result.
+`protection class` can refer to electrical protection or insulation classes, while an IP rating specifically describes ingress protection. `sound pressure level` is a specific acoustic quantity, while a generic `noise level` label may be defined differently by a specification. Mapping either pair automatically could create a false compliance result.
 
 Similar caution applies to concepts such as design pressure vs. working pressure, nominal voltage vs. rated voltage, and ambient temperature vs. operating temperature.
 
 ## Project- or vendor-specific aliases
 
-Use `--aliases` when a project, specification or manufacturer uses known local terminology.
+Use `--aliases` when a project, specification or manufacturer explicitly defines a local equivalence.
 
 Create a JSON object:
 
@@ -48,7 +49,7 @@ Create a JSON object:
 {
   "rated output": "motor power",
   "supplier ip code": "ip rating",
-  "nominal flow label": "flow rate"
+  "project noise label": "sound pressure level"
 }
 ```
 
