@@ -1,0 +1,17 @@
+name: Bug report
+description: Report a reproducible parsing or comparison problem
+title: "[bug] "
+labels: [bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What did bidlint do, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: sanitized-input
+    attributes:
+      label: Sanitized input
+      description: Paste a minimal sanitized text/PDF description. Do not upload confidential project documents.
