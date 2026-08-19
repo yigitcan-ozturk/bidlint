@@ -12,6 +12,13 @@
 - missing unit evidence remains `REVIEW` rather than being silently assumed
 - conversion-aware finding explanations such as `10000w (= 10kw)`
 - engineering-unit reference and five-minute quickstart documentation
+- deterministic vendor parsing for colon-delimited and two-column datasheet fields
+- paired-line extraction for numeric fields and explicit `Parameter:` qualitative fields
+- vendor parsing reference documenting supported layouts and deliberate limits
+
+### Changed
+
+- descriptive values such as `316L stainless steel` remain qualitative instead of being interpreted as a numeric value
 
 ## 0.1.0 — 2026-08-19
 

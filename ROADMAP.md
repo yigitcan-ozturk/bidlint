@@ -10,7 +10,8 @@
 
 ## v0.2 — real-world engineering documents
 - [x] deterministic unit conversion for core power, pressure, length and flow units
-- [ ] tables and multi-line datasheet fields
+- [x] deterministic colon, two-column and paired-line vendor field extraction
+- [ ] complex PDF table and multi-column layout reconstruction
 - [ ] broader engineering unit normalization
 - [ ] explicit engineering synonym packs
 - [ ] batch vendor comparison improvements
