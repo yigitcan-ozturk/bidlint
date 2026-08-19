@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- deterministic engineering unit conversion for power (`W`, `kW`, `MW`)
+- deterministic engineering unit conversion for pressure (`Pa`, `kPa`, `MPa`, `bar`)
+- deterministic engineering unit conversion for length (`mm`, `cm`, `m`)
+- deterministic engineering unit conversion for flow (`L/s`, `m³/s`, `m³/h`)
+- explicit dimension-safety: incompatible or unknown unit pairs remain `REVIEW`
+- conversion-aware finding explanations such as `10000w (= 10kw)`
+
 ## 0.1.0 — 2026-08-19
 
 Initial deterministic compliance engine.
