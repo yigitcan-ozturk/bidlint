@@ -1,0 +1,81 @@
+{
+  "tool": "bidlint",
+  "version": "0.1.0",
+  "ranking": [
+    {
+      "rank": 1,
+      "vendor": "vendor-b-submittal.pdf",
+      "compliance_score": 100.0,
+      "counts": {
+        "PASS": 4,
+        "DEVIATION": 0,
+        "MISSING": 0,
+        "REVIEW": 1
+      }
+    },
+    {
+      "rank": 2,
+      "vendor": "vendor-a-submittal.pdf",
+      "compliance_score": 50.0,
+      "counts": {
+        "PASS": 2,
+        "DEVIATION": 1,
+        "MISSING": 1,
+        "REVIEW": 1
+      }
+    }
+  ],
+  "reports": [
+    {
+      "tool": "bidlint",
+      "version": "0.1.0",
+      "specification": "pump-specification.pdf",
+      "vendor": "vendor-b-submittal.pdf",
+      "compliance_score": 100.0,
+      "counts": {
+        "PASS": 4,
+        "DEVIATION": 0,
+        "MISSING": 0,
+        "REVIEW": 1
+      },
+      "findings": [
+        {
+          "requirement": {"id":"R0001","text":"Motor efficiency shall be minimum 90 %","parameter":"motor efficiency","operator":">=","value":90.0,"unit":"%","mandatory":true,"source":{"document":"pump-specification.pdf","page":1,"line":3,"section":"6.4"}},
+          "vendor_fact": {"parameter":"motor efficiency","raw_value":"92 %","value":92.0,"unit":"%","source":{"document":"vendor-b-submittal.pdf","page":1,"line":2,"section":null}},
+          "status":"PASS","confidence":1.0,"reason":"Offered 92% satisfies >= 90%."
+        },
+        {
+          "requirement": {"id":"R0002","text":"Noise level must not exceed 70 dB","parameter":"noise level","operator":"<=","value":70.0,"unit":"db","mandatory":true,"source":{"document":"pump-specification.pdf","page":1,"line":4,"section":"6.4"}},
+          "vendor_fact": {"parameter":"noise level","raw_value":"69 dB","value":69.0,"unit":"db","source":{"document":"vendor-b-submittal.pdf","page":1,"line":3,"section":null}},
+          "status":"PASS","confidence":1.0,"reason":"Offered 69db satisfies <= 70db."
+        },
+        {
+          "requirement": {"id":"R0003","text":"IP rating shall be minimum 65","parameter":"ip rating","operator":">=","value":65.0,"unit":null,"mandatory":true,"source":{"document":"pump-specification.pdf","page":1,"line":5,"section":"6.4"}},
+          "vendor_fact": {"parameter":"ingress protection","raw_value":"66","value":66.0,"unit":null,"source":{"document":"vendor-b-submittal.pdf","page":1,"line":4,"section":null}},
+          "status":"PASS","confidence":1.0,"reason":"Offered 66 satisfies >= 65."
+        },
+        {
+          "requirement": {"id":"R0004","text":"Housing shall be corrosion resistant","parameter":"housing","operator":null,"value":null,"unit":null,"mandatory":true,"source":{"document":"pump-specification.pdf","page":1,"line":6,"section":"6.4"}},
+          "vendor_fact": {"parameter":"housing","raw_value":"epoxy-coated cast iron","value":null,"unit":null,"source":{"document":"vendor-b-submittal.pdf","page":1,"line":5,"section":null}},
+          "status":"REVIEW","confidence":1.0,"reason":"Matched a vendor parameter, but the requirement is qualitative or not deterministically comparable."
+        },
+        {
+          "requirement": {"id":"R0005","text":"Flow rate shall be minimum 120 m3/h","parameter":"flow rate","operator":">=","value":120.0,"unit":"m3/h","mandatory":true,"source":{"document":"pump-specification.pdf","page":1,"line":7,"section":"6.4"}},
+          "vendor_fact": {"parameter":"flow rate","raw_value":"125 m3/h","value":125.0,"unit":"m3/h","source":{"document":"vendor-b-submittal.pdf","page":1,"line":6,"section":null}},
+          "status":"PASS","confidence":1.0,"reason":"Offered 125m3/h satisfies >= 120m3/h."
+        }
+      ]
+    },
+    {
+      "tool":"bidlint","version":"0.1.0","specification":"pump-specification.pdf","vendor":"vendor-a-submittal.pdf","compliance_score":50.0,
+      "counts":{"PASS":2,"DEVIATION":1,"MISSING":1,"REVIEW":1},
+      "findings":[
+        {"requirement":{"id":"R0001","text":"Motor efficiency shall be minimum 90 %","parameter":"motor efficiency","operator":">=","value":90.0,"unit":"%","mandatory":true,"source":{"document":"pump-specification.pdf","page":1,"line":3,"section":"6.4"}},"vendor_fact":{"parameter":"motor efficiency","raw_value":"93 %","value":93.0,"unit":"%","source":{"document":"vendor-a-submittal.pdf","page":1,"line":2,"section":null}},"status":"PASS","confidence":1.0,"reason":"Offered 93% satisfies >= 90%."},
+        {"requirement":{"id":"R0002","text":"Noise level must not exceed 70 dB","parameter":"noise level","operator":"<=","value":70.0,"unit":"db","mandatory":true,"source":{"document":"pump-specification.pdf","page":1,"line":4,"section":"6.4"}},"vendor_fact":{"parameter":"noise level","raw_value":"68 dB","value":68.0,"unit":"db","source":{"document":"vendor-a-submittal.pdf","page":1,"line":3,"section":null}},"status":"PASS","confidence":1.0,"reason":"Offered 68db satisfies <= 70db."},
+        {"requirement":{"id":"R0003","text":"IP rating shall be minimum 65","parameter":"ip rating","operator":">=","value":65.0,"unit":null,"mandatory":true,"source":{"document":"pump-specification.pdf","page":1,"line":5,"section":"6.4"}},"vendor_fact":{"parameter":"ingress protection","raw_value":"54","value":54.0,"unit":null,"source":{"document":"vendor-a-submittal.pdf","page":1,"line":4,"section":null}},"status":"DEVIATION","confidence":1.0,"reason":"Offered 54 does not satisfy >= 65."},
+        {"requirement":{"id":"R0004","text":"Housing shall be corrosion resistant","parameter":"housing","operator":null,"value":null,"unit":null,"mandatory":true,"source":{"document":"pump-specification.pdf","page":1,"line":6,"section":"6.4"}},"vendor_fact":{"parameter":"housing","raw_value":"316L stainless steel","value":316.0,"unit":"l","source":{"document":"vendor-a-submittal.pdf","page":1,"line":5,"section":null}},"status":"REVIEW","confidence":1.0,"reason":"Matched a vendor parameter, but the requirement is qualitative or not deterministically comparable."},
+        {"requirement":{"id":"R0005","text":"Flow rate shall be minimum 120 m3/h","parameter":"flow rate","operator":">=","value":120.0,"unit":"m3/h","mandatory":true,"source":{"document":"pump-specification.pdf","page":1,"line":7,"section":"6.4"}},"vendor_fact":null,"status":"MISSING","confidence":0.444,"reason":"No sufficiently similar vendor parameter was found."}
+      ]
+    }
+  ]
+}
