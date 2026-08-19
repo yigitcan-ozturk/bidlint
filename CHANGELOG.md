@@ -18,11 +18,16 @@
 - conservative built-in engineering terminology packs for explicit nomenclature variants
 - project- and vendor-specific terminology aliases through `--aliases FILE.json`
 - terminology reference documenting deliberate non-equivalences and matching order
+- multi-vendor HTML technical bid tabulation with ranking summary and requirement-by-vendor matrix
+- long-form CSV audit export for multi-vendor technical comparisons
+- deterministic batch ranking tie-break order shared by terminal and portfolio outputs
+- batch comparison reference documenting technical-only ranking semantics
 
 ### Changed
 
 - descriptive values such as `316L stainless steel` remain qualitative instead of being interpreted as a numeric value
 - ambiguous `protection class` is no longer treated as equivalent to an IP rating
+- `rank --output` now supports `.json`, `.html` and `.csv`
 
 ## 0.1.0 — 2026-08-19
 

@@ -6,6 +6,7 @@ from pathlib import Path
 from . import __version__
 from .compare import compare
 from .parse import parse_requirements, parse_vendor_facts
+from .portfolio import portfolio_to_html, rank_reports, write_portfolio_csv
 from .report import portfolio_to_json, to_html, to_json, to_markdown, write_csv
 from .terminology import load_alias_file
 
@@ -40,6 +41,19 @@ def _write_report(report, output: str) -> None:
         raise SystemExit("--output must end in .json, .md, .html or .csv")
 
 
+def _write_portfolio(reports, output: str) -> None:
+    path = Path(output)
+    suffix = path.suffix.lower()
+    if suffix == ".json":
+        path.write_text(portfolio_to_json(reports), encoding="utf-8")
+    elif suffix == ".html":
+        path.write_text(portfolio_to_html(reports), encoding="utf-8")
+    elif suffix == ".csv":
+        write_portfolio_csv(reports, path)
+    else:
+        raise SystemExit("rank --output must end in .json, .html or .csv")
+
+
 def _add_matching_options(command: argparse.ArgumentParser) -> None:
     command.add_argument("--threshold", type=float, default=0.52, help="parameter matching threshold (0-1)")
     command.add_argument(
@@ -71,7 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
     rank_cmd.add_argument("vendors", nargs="+", help="two or more vendor PDF files")
     _add_matching_options(rank_cmd)
     rank_cmd.add_argument("--json", action="store_true", help="print portfolio JSON")
-    rank_cmd.add_argument("--output", help="write portfolio JSON")
+    rank_cmd.add_argument("--output", help="write ranking to .json, .html or .csv")
 
     extract_cmd = sub.add_parser("extract", help="inspect extracted requirements or vendor facts")
     extract_cmd.add_argument("document")
@@ -108,16 +122,10 @@ def main(argv: list[str] | None = None) -> int:
             )
             for vendor in args.vendors
         ]
-        ranked = sorted(
-            reports,
-            key=lambda r: (-r.compliance_score, r.counts["DEVIATION"] + r.counts["MISSING"], r.vendor.lower()),
-        )
+        ranked = rank_reports(reports)
         payload = portfolio_to_json(reports)
         if args.output:
-            path = Path(args.output)
-            if path.suffix.lower() != ".json":
-                raise SystemExit("rank --output currently supports .json")
-            path.write_text(payload, encoding="utf-8")
+            _write_portfolio(reports, args.output)
         if args.json:
             print(payload)
         else:
