@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-08-19
+
 ### Added
 
 - deterministic engineering unit conversion for power (`W`, `kW`, `MW`)
