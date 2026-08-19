@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bidlint — vendor-a-submittal.pdf</title>
+<style>
+:root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #f6f7f9; color: #16181d; }
+main { width: min(1180px, calc(100% - 40px)); margin: 40px auto 72px; }
+.hero { background: #111318; color: white; border-radius: 22px; padding: 30px; box-shadow: 0 16px 50px rgba(0,0,0,.12); }
+.eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: 12px; opacity: .62; }
+h1 { margin: 8px 0 10px; font-size: clamp(28px, 5vw, 54px); line-height: 1; }
+.subtitle { color: #b9bec9; max-width: 780px; }
+.score-grid { display: grid; grid-template-columns: 1.5fr repeat(4, 1fr); gap: 10px; margin-top: 24px; }
+.metric { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08); padding: 16px; border-radius: 14px; }
+.metric strong { display: block; font-size: 28px; }
+.metric span { font-size: 12px; color: #b9bec9; text-transform: uppercase; letter-spacing: .08em; }
+.panel { background: white; margin-top: 20px; border-radius: 18px; overflow: hidden; border: 1px solid #e7e9ee; }
+.panel-head { padding: 20px 22px; border-bottom: 1px solid #eceef2; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; vertical-align: top; padding: 14px 12px; border-bottom: 1px solid #eef0f3; }
+th { background: #fafbfc; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #626873; }
+.status { display: inline-block; min-width: 82px; text-align: center; border-radius: 999px; padding: 5px 8px; font-weight: 750; font-size: 11px; }
+.pass { background: #e9f8ef; color: #176a3a; }
+.deviation { background: #fdecec; color: #a62222; }
+.missing { background: #fff4da; color: #875f00; }
+.review { background: #edf0ff; color: #3849a5; }
+.muted { color: #777e89; font-size: 12px; margin-top: 5px; max-width: 520px; }
+footer { color: #767d88; font-size: 12px; padding: 18px 4px; }
+@media (max-width: 900px) { .score-grid { grid-template-columns: repeat(2, 1fr); } .score-grid .metric:first-child { grid-column: 1 / -1; } .panel { overflow-x: auto; } table { min-width: 980px; } }
+</style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="eyebrow">bidlint technical compliance</div>
+    <h1>50.0%</h1>
+    <div class="subtitle">pump-specification.pdf → vendor-a-submittal.pdf</div>
+    <div class="score-grid">
+      <div class="metric"><strong>50.0%</strong><span>Compliance score</span></div>
+      <div class="metric"><strong>2</strong><span>Pass</span></div>
+      <div class="metric"><strong>1</strong><span>Deviation</span></div>
+      <div class="metric"><strong>1</strong><span>Missing</span></div>
+      <div class="metric"><strong>1</strong><span>Review</span></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><strong>Compliance matrix</strong><div class="muted">Every finding retains specification and vendor source-page provenance.</div></div>
+    <table>
+      <thead><tr><th>Status</th><th>Requirement</th><th>Required</th><th>Offered</th><th>Match</th><th>Sources</th><th>Reason</th></tr></thead>
+      <tbody><tr><td><span class="status pass">PASS</span></td><td><strong>motor efficiency</strong><div class=muted>Motor efficiency shall be minimum 90 %</div></td><td>&gt;= 90%</td><td>93 %</td><td>1.00</td><td>p.1 / p.1</td><td>Offered 93% satisfies &gt;= 90%.</td></tr><tr><td><span class="status pass">PASS</span></td><td><strong>noise level</strong><div class=muted>Noise level must not exceed 70 dB</div></td><td>&lt;= 70db</td><td>68 dB</td><td>1.00</td><td>p.1 / p.1</td><td>Offered 68db satisfies &lt;= 70db.</td></tr><tr><td><span class="status deviation">DEVIATION</span></td><td><strong>ip rating</strong><div class=muted>IP rating shall be minimum 65</div></td><td>&gt;= 65</td><td>54</td><td>1.00</td><td>p.1 / p.1</td><td>Offered 54 does not satisfy &gt;= 65.</td></tr><tr><td><span class="status review">REVIEW</span></td><td><strong>housing</strong><div class=muted>Housing shall be corrosion resistant</div></td><td>qualitative</td><td>316L stainless steel</td><td>1.00</td><td>p.1 / p.1</td><td>Matched a vendor parameter, but the requirement is qualitative or not deterministically comparable.</td></tr><tr><td><span class="status missing">MISSING</span></td><td><strong>flow rate</strong><div class=muted>Flow rate shall be minimum 120 m3/h</div></td><td>&gt;= 120m3/h</td><td>—</td><td>0.44</td><td>p.1 / —</td><td>No sufficiently similar vendor parameter was found.</td></tr></tbody>
+    </table>
+  </section>
+  <footer>Generated locally by bidlint v0.1.0. No external AI API is required.</footer>
+</main>
+</body>
+</html>
