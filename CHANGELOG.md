@@ -15,10 +15,14 @@
 - deterministic vendor parsing for colon-delimited and two-column datasheet fields
 - paired-line extraction for numeric fields and explicit `Parameter:` qualitative fields
 - vendor parsing reference documenting supported layouts and deliberate limits
+- conservative built-in engineering terminology packs for explicit nomenclature variants
+- project- and vendor-specific terminology aliases through `--aliases FILE.json`
+- terminology reference documenting deliberate non-equivalences and matching order
 
 ### Changed
 
 - descriptive values such as `316L stainless steel` remain qualitative instead of being interpreted as a numeric value
+- ambiguous `protection class` is no longer treated as equivalent to an IP rating
 
 ## 0.1.0 — 2026-08-19
 

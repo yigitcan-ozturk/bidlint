@@ -1,29 +1,17 @@
 from __future__ import annotations
 
 import math
-import re
+from collections.abc import Mapping
 from difflib import SequenceMatcher
 
 from .models import ComplianceReport, Finding, Requirement, Status, VendorFact
+from .terminology import canonical_parameter
 from .units import canonical_unit, convert_value
 
-_SYNONYMS = {
-    "ingress protection": "ip rating",
-    "protection class": "ip rating",
-    "sound pressure": "noise level",
-    "operating temp": "operating temperature",
-}
 
-
-def _canon(text: str) -> str:
-    text = text.lower().strip()
-    text = _SYNONYMS.get(text, text)
-    text = re.sub(r"[^a-z0-9%°]+", " ", text)
-    return " ".join(text.split())
-
-
-def _similarity(a: str, b: str) -> float:
-    ca, cb = _canon(a), _canon(b)
+def _similarity(a: str, b: str, aliases: Mapping[str, str] | None = None) -> float:
+    ca = canonical_parameter(a, aliases)
+    cb = canonical_parameter(b, aliases)
     if ca == cb:
         return 1.0
     a_tokens, b_tokens = set(ca.split()), set(cb.split())
@@ -69,11 +57,12 @@ def compare(
     specification: str,
     vendor: str,
     threshold: float = 0.52,
+    aliases: Mapping[str, str] | None = None,
 ) -> ComplianceReport:
     findings: list[Finding] = []
     for req in requirements:
         ranked = sorted(
-            ((_similarity(req.parameter, fact.parameter), fact) for fact in facts),
+            ((_similarity(req.parameter, fact.parameter, aliases), fact) for fact in facts),
             key=lambda item: item[0],
             reverse=True,
         )

@@ -13,7 +13,7 @@
 - [x] deterministic colon, two-column and paired-line vendor field extraction
 - [ ] complex PDF table and multi-column layout reconstruction
 - [ ] broader engineering unit normalization
-- [ ] explicit engineering synonym packs
+- [x] conservative engineering terminology packs and project-specific JSON aliases
 - [ ] batch vendor comparison improvements
 
 ## v0.3 — optional AI extraction
