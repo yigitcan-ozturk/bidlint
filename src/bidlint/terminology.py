@@ -19,7 +19,6 @@ TERMINOLOGY_PACKS: dict[str, dict[str, tuple[str, ...]]] = {
             "operating-temperature",
         ),
         "noise level": (
-            "sound pressure level",
             "acoustic noise level",
         ),
     },
