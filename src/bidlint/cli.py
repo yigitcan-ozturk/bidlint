@@ -7,6 +7,7 @@ from . import __version__
 from .compare import compare
 from .parse import parse_requirements, parse_vendor_facts
 from .report import portfolio_to_json, to_html, to_json, to_markdown, write_csv
+from .terminology import load_alias_file
 
 
 def _summary(report) -> str:
@@ -39,6 +40,15 @@ def _write_report(report, output: str) -> None:
         raise SystemExit("--output must end in .json, .md, .html or .csv")
 
 
+def _add_matching_options(command: argparse.ArgumentParser) -> None:
+    command.add_argument("--threshold", type=float, default=0.52, help="parameter matching threshold (0-1)")
+    command.add_argument(
+        "--aliases",
+        metavar="FILE.json",
+        help="custom terminology aliases as a JSON object mapping vendor terms to canonical parameters",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bidlint",
@@ -50,7 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
     compare_cmd = sub.add_parser("compare", help="compare a specification PDF with one vendor submittal")
     compare_cmd.add_argument("specification")
     compare_cmd.add_argument("vendor")
-    compare_cmd.add_argument("--threshold", type=float, default=0.52, help="parameter matching threshold (0-1)")
+    _add_matching_options(compare_cmd)
     compare_cmd.add_argument("--json", action="store_true", help="print machine-readable JSON")
     compare_cmd.add_argument("--markdown", action="store_true", help="print Markdown report")
     compare_cmd.add_argument("--html", action="store_true", help="print self-contained HTML report")
@@ -59,7 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
     rank_cmd = sub.add_parser("rank", help="compare multiple vendor submittals against one specification")
     rank_cmd.add_argument("specification")
     rank_cmd.add_argument("vendors", nargs="+", help="two or more vendor PDF files")
-    rank_cmd.add_argument("--threshold", type=float, default=0.52, help="parameter matching threshold (0-1)")
+    _add_matching_options(rank_cmd)
     rank_cmd.add_argument("--json", action="store_true", help="print portfolio JSON")
     rank_cmd.add_argument("--output", help="write portfolio JSON")
 
@@ -79,6 +89,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     requirements = parse_requirements(args.specification)
+    try:
+        aliases = load_alias_file(args.aliases) if args.aliases else None
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"unable to load --aliases: {exc}") from exc
 
     if args.command == "rank":
         if len(args.vendors) < 2:
@@ -90,6 +104,7 @@ def main(argv: list[str] | None = None) -> int:
                 Path(args.specification).name,
                 Path(vendor).name,
                 threshold=args.threshold,
+                aliases=aliases,
             )
             for vendor in args.vendors
         ]
@@ -117,7 +132,14 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     facts = parse_vendor_facts(args.vendor)
-    report = compare(requirements, facts, Path(args.specification).name, Path(args.vendor).name, threshold=args.threshold)
+    report = compare(
+        requirements,
+        facts,
+        Path(args.specification).name,
+        Path(args.vendor).name,
+        threshold=args.threshold,
+        aliases=aliases,
+    )
 
     if args.output:
         _write_report(report, args.output)
