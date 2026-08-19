@@ -11,7 +11,7 @@
 
 It turns document evidence into explicit `PASS / DEVIATION / MISSING / REVIEW` findings, keeps source-page provenance, performs deterministic engineering comparisons where possible, and refuses to fabricate certainty where it cannot.
 
-> Latest stable release: **v0.1.0** · `main`: **v0.2.0.dev0**
+> Latest stable release: **v0.2.0**
 
 ```text
 Specification PDF ──> requirements ──┐
@@ -276,7 +276,7 @@ The limits are explicit by design:
 
 ## Roadmap
 
-See [`ROADMAP.md`](ROADMAP.md). Current v0.2 work focuses on real-world engineering documents while keeping the decision layer explainable.
+See [`ROADMAP.md`](ROADMAP.md). v0.2.0 establishes the real-world deterministic engineering workflow; v0.2.x will focus on document coverage and hardening before the optional AI extraction milestone.
 
 Later milestones include optional AI-assisted structured extraction, MCP, IFC property inputs and a direct technical-compliance contract for `supplier-scorecard`.
 

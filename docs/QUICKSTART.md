@@ -44,9 +44,18 @@ bidlint rank samples/pump-specification.pdf \
 
 The ranking is based on deterministic technical-compliance results, not an LLM score.
 
+Generate a shareable multi-vendor matrix:
+
+```bash
+bidlint rank samples/pump-specification.pdf \
+  samples/vendor-a-submittal.pdf \
+  samples/vendor-b-submittal.pdf \
+  --output technical-tabulation.html
+```
+
 ## 5. Understand unit-safe comparison
 
-The v0.2 work on the main development line converts known engineering units before evaluating a threshold.
+v0.2.0 converts known engineering units before evaluating a threshold.
 
 Example:
 
