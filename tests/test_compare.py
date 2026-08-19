@@ -105,6 +105,16 @@ def test_flow_conversion_between_m3h_and_ls():
     assert report.findings[0].status == Status.PASS
 
 
+def test_flow_conversion_supports_litres_per_minute():
+    report = compare(
+        [req("flow rate", ">=", 1, "l/s")],
+        [fact("flow rate", 60, "l/min")],
+        "spec.pdf",
+        "vendor.pdf",
+    )
+    assert report.findings[0].status == Status.PASS
+
+
 def test_incompatible_dimensions_remain_review():
     report = compare(
         [req("motor power", ">=", 10, "kw")],
@@ -115,12 +125,28 @@ def test_incompatible_dimensions_remain_review():
     assert report.findings[0].status == Status.REVIEW
 
 
+def test_missing_unit_evidence_remains_review():
+    report = compare(
+        [req("motor power", ">=", 10, "kw")],
+        [fact("motor power", 12)],
+        "spec.pdf",
+        "vendor.pdf",
+    )
+    finding = report.findings[0]
+    assert finding.status == Status.REVIEW
+    assert "Units require review" in finding.reason
+
+
 def test_unit_helpers_are_explicit_and_dimension_safe():
     assert canonical_unit("m3/h") == "m³/h"
+    assert canonical_unit("LPM") == "l/min"
     assert convert_value(1000, "w", "kw") == 1
     assert convert_value(1, "bar", "kpa") == 100
     assert convert_value(36, "m3/h", "l/s") == 10
+    assert convert_value(60, "l/min", "l/s") == 1
     assert convert_value(1, "kw", "bar") is None
+    assert convert_value(10, None, "kw") is None
+    assert convert_value(10, None, None) == 10
 
 
 def test_report_renderers_and_portfolio_json():
