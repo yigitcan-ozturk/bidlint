@@ -7,31 +7,31 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-`bidlint` is an open-source engineering compliance engine for comparing text-based technical specification PDFs with vendor datasheets, bids and submittals.
+`bidlint` is an open-source technical bid compliance engine for comparing engineering specifications with vendor datasheets, bids and submittals.
 
-It extracts normative requirements, matches them to offered parameters, evaluates deterministic engineering rules, and produces an auditable compliance matrix with source-page traceability.
+It turns document evidence into explicit `PASS / DEVIATION / MISSING / REVIEW` findings, keeps source-page provenance, performs deterministic engineering comparisons where possible, and refuses to fabricate certainty where it cannot.
+
+> Latest stable release: **v0.1.0** · `main`: **v0.2.0.dev0**
 
 ```text
 Specification PDF ──> requirements ──┐
-                                     ├──> deterministic comparison ──> PASS / DEVIATION / MISSING / REVIEW
-Vendor submittal ────> offered facts ┘
+                                     ├──> terminology + unit-aware rules ──> findings
+Vendor submittal ────> offered facts ┘                              │
+                                                                    ├──> JSON / CSV / HTML
+Multiple vendors ────────────────────────────────────────────────────└──> technical bid tabulation
 ```
 
-> Latest stable release: **v0.1.0**. The `main` branch tracks **v0.2.0.dev0** development.
+## The problem
 
-**New to bidlint?** Start with the [`five-minute demo`](docs/QUICKSTART.md).
+Technical bid evaluation is still often performed by reading specifications and vendor submittals side-by-side, copying values into spreadsheets, and manually tracking deviations.
 
-## Why
-
-Technical bid evaluation is still frequently performed by manually reading specifications, datasheets, quotations and submittals side-by-side. The work is repetitive, difficult to audit and easy to lose in spreadsheets.
-
-`bidlint` focuses on one narrow problem:
+`bidlint` focuses on one narrow question:
 
 > **What did the specification require, what did the vendor offer, and where is the evidence?**
 
-The project deliberately separates deterministic engineering rules from future AI-assisted extraction. A model may eventually help normalize messy language, but it should not silently decide whether `54 >= 65`.
+The deterministic core does not need an LLM or an external API.
 
-## Demo
+## 30-second demo
 
 ```bash
 bidlint compare samples/pump-specification.pdf samples/vendor-a-submittal.pdf
@@ -49,43 +49,15 @@ REVIEW     : 1
 PASS       R0001  motor efficiency — Offered 93% satisfies >= 90%.
 PASS       R0002  noise level — Offered 68db satisfies <= 70db.
 DEVIATION  R0003  ip rating — Offered 54 does not satisfy >= 65.
-REVIEW     R0004  housing — Matched a vendor parameter, but the requirement is qualitative...
-MISSING    R0005  flow rate — No sufficiently similar vendor parameter was found.
+REVIEW     R0004  housing — qualitative comparison requires review.
+MISSING    R0005  flow rate — no sufficiently similar vendor parameter found.
 ```
 
-### Engineering unit conversion
+For a reproducible walkthrough, see the [`five-minute demo`](docs/QUICKSTART.md).
 
-The v0.2 development line can compare supported units across the same physical dimension without asking an LLM to reason about arithmetic.
+## Multi-vendor technical bid tabulation
 
-```text
-Specification: Motor power shall be minimum 10 kW.
-Vendor       : Motor power: 10000 W
-
-PASS — Offered 10000w (= 10kw) satisfies >= 10kw.
-```
-
-If the unit is missing, unknown or dimensionally incompatible, the result remains `REVIEW` rather than guessing.
-
-See [`docs/ENGINEERING_UNITS.md`](docs/ENGINEERING_UNITS.md) for the supported conversion model.
-
-## Outputs
-
-Machine-readable result:
-
-```bash
-bidlint compare samples/pump-specification.pdf samples/vendor-a-submittal.pdf --json
-```
-
-Export a technical compliance matrix:
-
-```bash
-bidlint compare samples/pump-specification.pdf samples/vendor-a-submittal.pdf --output compliance.csv
-bidlint compare samples/pump-specification.pdf samples/vendor-a-submittal.pdf --output compliance.md
-bidlint compare samples/pump-specification.pdf samples/vendor-a-submittal.pdf --output compliance.json
-bidlint compare samples/pump-specification.pdf samples/vendor-a-submittal.pdf --output compliance.html
-```
-
-Rank multiple vendors against the same specification:
+Compare several vendors against the same specification:
 
 ```bash
 bidlint rank samples/pump-specification.pdf \
@@ -100,39 +72,134 @@ BIDLINT — VENDOR RANKING
  2. vendor-a-submittal.pdf          50.0%  PASS 2  DEV 1  MISS 1  REVIEW 1
 ```
 
-## Current capabilities
+Generate a self-contained HTML comparison with a ranking summary and requirement-by-vendor matrix:
 
-- extract page-preserving text from technical PDFs
-- identify normative language such as `shall`, `must`, `minimum`, `maximum`, `at least` and `not exceed`
-- parse simple numeric engineering requirements into explicit operators
-- extract vendor `parameter: value` facts
-- match requirement parameters to offered parameters with transparent similarity rules
-- classify findings as `PASS`, `DEVIATION`, `MISSING` or `REVIEW`
-- retain source page references for auditability
-- export JSON, CSV, Markdown and self-contained HTML reports
-- rank multiple vendor submittals against one specification
-- convert supported power, pressure, length and flow units deterministically on the v0.2 development line
-- run without an LLM or external API
+```bash
+bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf \
+  --output technical-tabulation.html
+```
 
-## Status semantics
+Or export a long-form audit CSV that can be filtered, pivoted or imported into procurement workflows:
+
+```bash
+bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf \
+  --output technical-tabulation.csv
+```
+
+See [`docs/BATCH_COMPARISON.md`](docs/BATCH_COMPARISON.md).
+
+## Engineering-safe comparison
+
+### Unit conversion
+
+Known units in the same physical dimension are converted deterministically.
+
+```text
+Specification: Motor power shall be minimum 10 kW.
+Vendor       : Motor power: 10000 W
+
+PASS — Offered 10000w (= 10kw) satisfies >= 10kw.
+```
+
+Current deterministic families include power, pressure, length and flow. Missing, unknown or dimensionally incompatible units remain `REVIEW`.
+
+See [`docs/ENGINEERING_UNITS.md`](docs/ENGINEERING_UNITS.md).
+
+### Vendor datasheet layouts
+
+Vendor facts can be extracted from several explicit layouts:
+
+```text
+Motor power: 11 kW
+```
+
+```text
+Motor power        11 kW
+Design pressure    10 bar
+```
+
+```text
+Motor power
+11000 W
+```
+
+```text
+Housing material:
+316L stainless steel
+```
+
+Descriptive material grades such as `316L stainless steel` stay qualitative; they are not silently converted into a numeric value of `316`.
+
+See [`docs/VENDOR_PARSING.md`](docs/VENDOR_PARSING.md).
+
+### Engineering terminology
+
+Built-in terminology aliases normalize a deliberately small set of low-risk nomenclature variants:
+
+```text
+ingress protection rating -> ip rating
+flow-rate                 -> flow rate
+rotation speed            -> rotational speed
+rated motor power         -> motor power
+```
+
+Project- or vendor-specific terminology can be declared explicitly:
+
+```json
+{
+  "rated output": "motor power",
+  "supplier ip code": "ip rating"
+}
+```
+
+```bash
+bidlint compare specification.pdf vendor.pdf --aliases aliases.json
+```
+
+Ambiguous concepts are intentionally not collapsed automatically. For example, `protection class` is not assumed to mean `ip rating`.
+
+See [`docs/TERMINOLOGY.md`](docs/TERMINOLOGY.md).
+
+## Status model
 
 | Status | Meaning |
 | --- | --- |
-| `PASS` | Offered numeric value deterministically satisfies the requirement |
-| `DEVIATION` | Offered numeric value deterministically violates the requirement |
-| `MISSING` | No sufficiently similar offered parameter was found |
-| `REVIEW` | A match exists, but the comparison is qualitative, ambiguous or not safely comparable |
+| `PASS` | Offered value deterministically satisfies the requirement |
+| `DEVIATION` | Offered value deterministically violates the requirement |
+| `MISSING` | No sufficiently similar vendor parameter was found |
+| `REVIEW` | Evidence exists, but the comparison is qualitative, ambiguous or not safely deterministic |
 
-`REVIEW` is intentional. The engine prefers an explicit human-review state over fabricating certainty.
+`REVIEW` is a feature, not a fallback. The engine prefers explicit uncertainty over a false compliance decision.
+
+## Outputs
+
+### Single vendor
+
+```bash
+bidlint compare specification.pdf vendor.pdf --output compliance.json
+bidlint compare specification.pdf vendor.pdf --output compliance.csv
+bidlint compare specification.pdf vendor.pdf --output compliance.md
+bidlint compare specification.pdf vendor.pdf --output compliance.html
+```
+
+### Multiple vendors
+
+```bash
+bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf --output ranking.json
+bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf --output ranking.csv
+bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf --output ranking.html
+```
+
+JSON is the machine-readable integration contract. CSV is optimized for tabular workflows. HTML is self-contained and designed for human review.
 
 ## Quick start
 
-### Requirements
+Requirements:
 
 - Python 3.11+
-- text-based PDFs; OCR is not included yet
+- text-based PDFs
 
-### Install from source
+Install from source:
 
 ```bash
 git clone https://github.com/yigitcan-ozturk/bidlint.git
@@ -142,118 +209,80 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-### Compare two documents
+Windows PowerShell:
 
-```bash
-bidlint compare specification.pdf vendor-submittal.pdf
+```powershell
+.venv\Scripts\Activate.ps1
 ```
 
-### Rank multiple vendors
-
-```bash
-bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf vendor-c.pdf
-```
-
-### Inspect extraction
+Inspect extraction before comparing:
 
 ```bash
 bidlint extract specification.pdf --kind specification
-bidlint extract vendor-submittal.pdf --kind vendor
+bidlint extract vendor.pdf --kind vendor
 ```
-
-For a reproducible walkthrough using the bundled samples, see [`docs/QUICKSTART.md`](docs/QUICKSTART.md).
-
-## Example JSON contract
-
-```json
-{
-  "tool": "bidlint",
-  "version": "0.2.0.dev0",
-  "specification": "pump-specification.pdf",
-  "vendor": "vendor-a-submittal.pdf",
-  "compliance_score": 50.0,
-  "counts": {
-    "PASS": 2,
-    "DEVIATION": 1,
-    "MISSING": 1,
-    "REVIEW": 1
-  },
-  "findings": []
-}
-```
-
-The full finding objects include the original requirement, matched vendor fact, confidence, decision reason and document/page provenance. Version metadata is sourced from the package version rather than duplicated in exporters.
 
 ## Design principles
 
-### 1. Evidence before confidence
-Every result should point back to the document that produced it.
+**Evidence before confidence.** Every result should remain traceable to its source document.
 
-### 2. Deterministic where possible
-Numeric limits, unit conversion, thresholds and policy rules should be evaluated by code, not language-model opinion.
+**Deterministic where possible.** Numeric limits, unit conversions and explicit terminology mappings belong in code, not model opinion.
 
-### 3. Explicit uncertainty
-If the engine cannot safely compare a requirement, it returns `REVIEW`.
+**Explicit uncertainty.** Unsupported or ambiguous comparisons remain `REVIEW`.
 
-### 4. Provider-independent core
-The deterministic model does not depend on an AI vendor. Future AI extraction is an adapter, not the decision engine.
+**Provider-independent core.** Future AI-assisted extraction is an adapter to the deterministic model, not the authority that decides compliance.
 
-### 5. Engineering first
-The project is designed around real specification/submittal workflows rather than generic document chat.
+**Engineering first.** The project is designed around specification/submittal workflows rather than generic document chat.
 
 ## Architecture
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/DECISION_MODEL.md`](docs/DECISION_MODEL.md), [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) and [`docs/ENGINEERING_UNITS.md`](docs/ENGINEERING_UNITS.md).
-
 ```text
-PDF
- │
- ▼
-page-preserving extraction
- │
- ├──────── specification ────────> requirement parser
- │                                      │
- └──────── vendor submittal ─────> vendor fact parser
-                                        │
-                  ┌─────────────────────┘
-                  ▼
-            parameter matcher
-                  │
-                  ▼
-       unit-aware deterministic evaluator
-                  │
-        ┌─────────┼─────────┐
-        ▼         ▼         ▼
-      JSON       CSV    Markdown / HTML
+PDF extraction
+    │
+    ├── specification ──> requirement parser ─────────────┐
+    │                                                     │
+    └── vendor ────────> structured fact parser ──────┐   │
+                                                       ▼   ▼
+                                               terminology matcher
+                                                       │
+                                                       ▼
+                                               unit-aware evaluator
+                                                       │
+                                ┌──────────────────────┼───────────────────┐
+                                ▼                      ▼                   ▼
+                           single report          vendor ranking      audit exports
 ```
+
+Detailed references:
+
+- [`Architecture`](docs/ARCHITECTURE.md)
+- [`Decision model`](docs/DECISION_MODEL.md)
+- [`Data contract`](docs/DATA_CONTRACT.md)
+- [`Engineering units`](docs/ENGINEERING_UNITS.md)
+- [`Vendor parsing`](docs/VENDOR_PARSING.md)
+- [`Terminology`](docs/TERMINOLOGY.md)
+- [`Batch comparison`](docs/BATCH_COMPARISON.md)
 
 ## Current limits
 
-The project intentionally keeps uncertainty visible.
+The limits are explicit by design:
 
 - scanned/image-only PDFs require OCR before processing
-- complex tables and multi-column layouts may need pre-processing
+- arbitrary PDF table-cell reconstruction is not yet implemented
+- complex visual multi-column layouts may need preprocessing
 - only documented engineering unit families are converted automatically
-- qualitative requirements are routed to `REVIEW`
-- vendor parsing currently favors explicit `parameter: value` datasheet lines
-
-These constraints are visible by design rather than hidden behind an AI confidence score.
+- qualitative requirements remain `REVIEW` without an explicit deterministic rule
+- terminology aliases are conservative unless the user provides a project-specific mapping
 
 ## Roadmap
 
-The next milestones are documented in [`ROADMAP.md`](ROADMAP.md):
+See [`ROADMAP.md`](ROADMAP.md). Current v0.2 work focuses on real-world engineering documents while keeping the decision layer explainable.
 
-- stronger table and multi-line datasheet extraction
-- broader engineering unit normalization
-- explicit engineering synonym packs
-- optional AI-assisted structured extraction
-- MCP server
-- IFC property inputs
-- direct technical-compliance contract for `supplier-scorecard`
+Later milestones include optional AI-assisted structured extraction, MCP, IFC property inputs and a direct technical-compliance contract for `supplier-scorecard`.
 
 ## Procurement / engineering tooling
 
-`bidlint` is designed to become the technical-compliance input to the existing procurement decision suite:
+`bidlint` is designed as the technical-compliance signal in a broader explainable procurement toolchain:
 
 ```text
 currency-normalizer ──> rfqdiff ────────────────┐
@@ -273,17 +302,17 @@ pytest -q
 ruff check src tests
 ```
 
-GitHub Actions tests Python 3.11, 3.12 and 3.13.
+GitHub Actions targets Python 3.11, 3.12 and 3.13 and can also be started manually through `workflow_dispatch`.
 
 ## Security and confidential documents
 
-Technical documents may contain confidential project, vendor or commercial information. `bidlint` performs local deterministic processing and does not transmit documents to an external AI API.
+Technical documents may contain confidential project, vendor or commercial information. The deterministic core runs locally and does not transmit documents to an external AI API.
 
 See [`SECURITY.md`](SECURITY.md) before exposing document processing as a network service.
 
 ## Contributing
 
-Contributions are welcome. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md). The most valuable early contributions are sanitized real-world requirement patterns, unit cases and false-positive matching examples.
+Contributions are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md). High-value early contributions include sanitized real-world requirement patterns, unit cases, terminology edge cases and false-positive parsing examples.
 
 ## License
 
