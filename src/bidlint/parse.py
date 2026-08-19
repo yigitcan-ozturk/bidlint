@@ -12,9 +12,9 @@ _REQUIREMENT_HINT = re.compile(
 )
 
 _COMPARATOR_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"(?:minimum|at least|not less than|no less than|>=)\s*[:=]?\s*(-?\d+(?:\.\d+)?)\s*([A-Za-z0-9%°/\-²³]+)?", re.I), ">="),
-    (re.compile(r"(?:maximum|not more than|no more than|not exceed|<=)\s*[:=]?\s*(-?\d+(?:\.\d+)?)\s*([A-Za-z0-9%°/\-²³]+)?", re.I), "<="),
-    (re.compile(r"(?:shall be|must be|required)\s*[:=]?\s*(-?\d+(?:\.\d+)?)\s*([A-Za-z0-9%°/\-²³]+)?", re.I), "="),
+    (re.compile(r"(?:minimum|at least|not less than|no less than|>=)\s*[:=]?\s*(-?\d+(?:\.\d+)?)\s*([A-Za-z0-9%°/\-²³]+)?", re.IGNORECASE), ">="),
+    (re.compile(r"(?:maximum|not more than|no more than|not exceed|<=)\s*[:=]?\s*(-?\d+(?:\.\d+)?)\s*([A-Za-z0-9%°/\-²³]+)?", re.IGNORECASE), "<="),
+    (re.compile(r"(?:shall be|must be|required)\s*[:=]?\s*(-?\d+(?:\.\d+)?)\s*([A-Za-z0-9%°/\-²³]+)?", re.IGNORECASE), "="),
 ]
 
 _KEY_VALUE = re.compile(r"^\s*([^:]{2,80}?)\s*:\s*(.+?)\s*$")
@@ -93,7 +93,7 @@ def parse_requirements(path: str | Path) -> list[Requirement]:
                     operator=operator,
                     value=value,
                     unit=unit,
-                    mandatory=bool(re.search(r"\b(shall|must|required)\b", line, re.I)),
+                    mandatory=bool(re.search(r"\b(shall|must|required)\b", line, re.IGNORECASE)),
                     source=SourceRef(document=path.name, page=page.page, line=line_no, section=current_section),
                 )
             )
