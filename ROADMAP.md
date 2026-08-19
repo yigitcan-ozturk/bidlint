@@ -14,7 +14,7 @@
 - [ ] complex PDF table and multi-column layout reconstruction
 - [ ] broader engineering unit normalization
 - [x] conservative engineering terminology packs and project-specific JSON aliases
-- [ ] batch vendor comparison improvements
+- [x] batch vendor ranking with HTML matrix and CSV audit exports
 
 ## v0.3 — optional AI extraction
 - provider-neutral structured extraction interface
