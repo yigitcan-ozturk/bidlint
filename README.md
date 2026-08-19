@@ -2,6 +2,8 @@
 
 **Lint technical bids against specifications. Evidence before confidence.**
 
+![bidlint technical bid compliance workflow](docs/assets/bidlint-overview.svg)
+
 [![Tests](https://github.com/yigitcan-ozturk/bidlint/actions/workflows/tests.yml/badge.svg)](https://github.com/yigitcan-ozturk/bidlint/actions/workflows/tests.yml)
 [![Release](https://img.shields.io/github/v/release/yigitcan-ozturk/bidlint)](https://github.com/yigitcan-ozturk/bidlint/releases)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
