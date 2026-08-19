@@ -4,6 +4,8 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any
 
+from . import __version__
+
 
 class Status(str, Enum):
     PASS = "PASS"
@@ -76,7 +78,7 @@ class ComplianceReport:
     def to_dict(self) -> dict[str, Any]:
         return {
             "tool": "bidlint",
-            "version": "0.1.0",
+            "version": __version__,
             "specification": self.specification,
             "vendor": self.vendor,
             "compliance_score": self.compliance_score,

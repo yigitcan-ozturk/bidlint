@@ -9,10 +9,11 @@
 - CI on Python 3.11–3.13
 
 ## v0.2 — real-world engineering documents
-- tables and multi-line datasheet fields
-- stronger unit normalization and conversion
-- explicit engineering synonym packs
-- batch vendor comparison
+- [x] deterministic unit conversion for core power, pressure, length and flow units
+- [ ] tables and multi-line datasheet fields
+- [ ] broader engineering unit normalization
+- [ ] explicit engineering synonym packs
+- [ ] batch vendor comparison improvements
 
 ## v0.3 — optional AI extraction
 - provider-neutral structured extraction interface
