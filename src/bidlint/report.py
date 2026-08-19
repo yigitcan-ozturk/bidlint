@@ -5,6 +5,7 @@ import html
 import json
 from pathlib import Path
 
+from . import __version__
 from .models import ComplianceReport
 
 
@@ -24,7 +25,7 @@ def portfolio_to_json(reports: list[ComplianceReport]) -> str:
     return json.dumps(
         {
             "tool": "bidlint",
-            "version": "0.1.0",
+            "version": __version__,
             "ranking": [
                 {
                     "rank": index,
@@ -155,7 +156,7 @@ footer {{ color: #767d88; font-size: 12px; padding: 18px 4px; }}
       <tbody>{''.join(rows)}</tbody>
     </table>
   </section>
-  <footer>Generated locally by bidlint v0.1.0. No external AI API is required.</footer>
+  <footer>Generated locally by bidlint v{__version__}. No external AI API is required.</footer>
 </main>
 </body>
 </html>"""
