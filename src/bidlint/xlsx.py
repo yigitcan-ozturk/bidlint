@@ -8,7 +8,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from . import __version__
-from .models import ComplianceReport, Finding, Requirement, Status
+from .models import ComplianceReport, Requirement, Status
 from .portfolio import rank_reports
 
 _MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
@@ -41,25 +41,23 @@ def _excel_text(value: object) -> str:
 
 
 def _column_name(index: int) -> str:
-    if index < 1 or index > _MAX_COLS:
+    if not 1 <= index <= _MAX_COLS:
         raise ValueError("workbook column limit exceeded")
-    letters: list[str] = []
-    value = index
-    while value:
-        value, remainder = divmod(value - 1, 26)
-        letters.append(chr(65 + remainder))
-    return "".join(reversed(letters))
+    parts: list[str] = []
+    while index:
+        index, remainder = divmod(index - 1, 26)
+        parts.append(chr(65 + remainder))
+    return "".join(reversed(parts))
 
 
-def _cell(reference: str, value: object, *, style: int = 4) -> ET.Element:
+def _cell(reference: str, value: object, style: int) -> ET.Element:
     attrs = {"r": reference, "s": str(style)}
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         numeric = float(value)
         if not math.isfinite(numeric):
             raise ValueError(f"non-finite workbook value at {reference}")
         cell = ET.Element(_q("c"), attrs)
-        raw = ET.SubElement(cell, _q("v"))
-        raw.text = f"{numeric:g}"
+        ET.SubElement(cell, _q("v")).text = f"{numeric:g}"
         return cell
 
     cell = ET.Element(_q("c"), {**attrs, "t": "inlineStr"})
@@ -74,8 +72,8 @@ def _append_row(
     sheet_data: ET.Element,
     row_number: int,
     values: list[object],
+    styles: list[int],
     *,
-    styles: list[int] | None = None,
     height: float | None = None,
 ) -> None:
     if row_number > _MAX_ROWS:
@@ -85,8 +83,8 @@ def _append_row(
         attrs.update({"ht": f"{height:g}", "customHeight": "1"})
     row = ET.SubElement(sheet_data, _q("row"), attrs)
     for column, value in enumerate(values, start=1):
-        style = styles[column - 1] if styles and column <= len(styles) else 4
-        row.append(_cell(f"{_column_name(column)}{row_number}", value, style=style))
+        style = styles[column - 1] if column <= len(styles) else 4
+        row.append(_cell(f"{_column_name(column)}{row_number}", value, style))
 
 
 def _required_text(requirement: Requirement) -> str:
@@ -107,7 +105,7 @@ def _requirements(reports: list[ComplianceReport]) -> list[Requirement]:
     return ordered
 
 
-def _style_for_status(status: Status) -> int:
+def _status_style(status: Status) -> int:
     return {
         Status.PASS: 7,
         Status.DEVIATION: 8,
@@ -116,77 +114,62 @@ def _style_for_status(status: Status) -> int:
     }[status]
 
 
-def _base_worksheet(*, freeze_rows: int, freeze_columns: int = 0) -> tuple[ET.Element, ET.Element]:
+def _new_sheet(*, freeze_rows: int, freeze_columns: int = 0, widths: list[float]) -> tuple[ET.Element, ET.Element]:
     root = ET.Element(_q("worksheet"))
     views = ET.SubElement(root, _q("sheetViews"))
     view = ET.SubElement(views, _q("sheetView"), {"workbookViewId": "0"})
     if freeze_rows or freeze_columns:
-        attrs: dict[str, str] = {"state": "frozen"}
+        pane: dict[str, str] = {"state": "frozen"}
         if freeze_rows:
-            attrs["ySplit"] = str(freeze_rows)
+            pane["ySplit"] = str(freeze_rows)
         if freeze_columns:
-            attrs["xSplit"] = str(freeze_columns)
-        attrs["topLeftCell"] = f"{_column_name(freeze_columns + 1)}{freeze_rows + 1}"
-        attrs["activePane"] = "bottomRight" if freeze_rows and freeze_columns else (
+            pane["xSplit"] = str(freeze_columns)
+        pane["topLeftCell"] = f"{_column_name(freeze_columns + 1)}{freeze_rows + 1}"
+        pane["activePane"] = "bottomRight" if freeze_rows and freeze_columns else (
             "bottomLeft" if freeze_rows else "topRight"
         )
-        ET.SubElement(view, _q("pane"), attrs)
+        ET.SubElement(view, _q("pane"), pane)
+
     ET.SubElement(root, _q("sheetFormatPr"), {"defaultRowHeight": "15"})
-    sheet_data = ET.SubElement(root, _q("sheetData"))
-    return root, sheet_data
-
-
-def _add_columns(root: ET.Element, widths: list[float]) -> None:
-    cols = ET.Element(_q("cols"))
+    cols = ET.SubElement(root, _q("cols"))
     for index, width in enumerate(widths, start=1):
         ET.SubElement(
             cols,
             _q("col"),
             {"min": str(index), "max": str(index), "width": f"{width:g}", "customWidth": "1"},
         )
-    sheet_data = root.find(_q("sheetData"))
-    assert sheet_data is not None
-    root.insert(list(root).index(sheet_data), cols)
+    return root, ET.SubElement(root, _q("sheetData"))
 
 
-def _add_merge(root: ET.Element, reference: str) -> None:
-    merges = root.find(_q("mergeCells"))
-    if merges is None:
-        merges = ET.SubElement(root, _q("mergeCells"), {"count": "0"})
-    ET.SubElement(merges, _q("mergeCell"), {"ref": reference})
-    merges.set("count", str(len(merges)))
-
-
-def _add_filter(root: ET.Element, reference: str) -> None:
-    ET.SubElement(root, _q("autoFilter"), {"ref": reference})
+def _finish_sheet(root: ET.Element, *, auto_filter: str, merges: list[str]) -> None:
+    # OOXML worksheet order requires autoFilter before mergeCells.
+    ET.SubElement(root, _q("autoFilter"), {"ref": auto_filter})
+    if merges:
+        merge_cells = ET.SubElement(root, _q("mergeCells"), {"count": str(len(merges))})
+        for reference in merges:
+            ET.SubElement(merge_cells, _q("mergeCell"), {"ref": reference})
+    ET.SubElement(
+        root,
+        _q("pageMargins"),
+        {"left": "0.5", "right": "0.5", "top": "0.6", "bottom": "0.6", "header": "0.3", "footer": "0.3"},
+    )
 
 
 def _ranking_sheet(ranked: list[ComplianceReport]) -> bytes:
-    root, data = _base_worksheet(freeze_rows=4)
-    _add_columns(root, [8, 34, 14, 11, 13, 11, 11])
-
-    _append_row(data, 1, ["bidlint technical bid tabulation"], styles=[1], height=28)
-    _append_row(data, 2, ["Specification", ranked[0].specification], styles=[2, 4])
-    _append_row(data, 3, ["Generated by", f"bidlint v{__version__}"], styles=[2, 4])
+    root, data = _new_sheet(freeze_rows=4, widths=[8, 34, 14, 11, 13, 11, 11])
+    _append_row(data, 1, ["bidlint technical bid tabulation"], [1], height=28)
+    _append_row(data, 2, ["Specification", ranked[0].specification], [2, 4])
+    _append_row(data, 3, ["Generated by", f"bidlint v{__version__}"], [2, 4])
     headers = ["Rank", "Vendor", "Score", "PASS", "DEVIATION", "MISSING", "REVIEW"]
-    _append_row(data, 4, headers, styles=[3] * len(headers), height=22)
+    _append_row(data, 4, headers, [3] * len(headers), height=22)
 
     for rank, report in enumerate(ranked, start=1):
         counts = report.counts
-        row = 4 + rank
         _append_row(
             data,
-            row,
-            [
-                rank,
-                report.vendor,
-                report.compliance_score,
-                counts["PASS"],
-                counts["DEVIATION"],
-                counts["MISSING"],
-                counts["REVIEW"],
-            ],
-            styles=[6, 4, 5, 6, 6, 6, 6],
+            4 + rank,
+            [rank, report.vendor, report.compliance_score, counts["PASS"], counts["DEVIATION"], counts["MISSING"], counts["REVIEW"]],
+            [6, 4, 5, 6, 6, 6, 6],
         )
 
     note_row = 6 + len(ranked)
@@ -194,12 +177,14 @@ def _ranking_sheet(ranked: list[ComplianceReport]) -> bytes:
         data,
         note_row,
         ["Technical ranking only. Commercial price, delivery, payment terms and final engineering acceptance are outside bidlint."],
-        styles=[11],
+        [11],
         height=30,
     )
-    _add_merge(root, "A1:G1")
-    _add_merge(root, f"A{note_row}:G{note_row}")
-    _add_filter(root, f"A4:G{4 + len(ranked)}")
+    _finish_sheet(
+        root,
+        auto_filter=f"A4:G{4 + len(ranked)}",
+        merges=["A1:G1", f"A{note_row}:G{note_row}"],
+    )
     return _xml_bytes(root)
 
 
@@ -207,26 +192,19 @@ def _matrix_sheet(ranked: list[ComplianceReport], requirements: list[Requirement
     column_count = 3 + len(ranked)
     if column_count > _MAX_COLS:
         raise ValueError("too many vendors for XLSX matrix")
-    root, data = _base_worksheet(freeze_rows=4, freeze_columns=3)
-    _add_columns(root, [14, 28, 18] + [36] * len(ranked))
-
     last_column = _column_name(column_count)
-    _append_row(data, 1, ["requirement-by-vendor matrix"], styles=[1], height=28)
-    _append_row(data, 2, ["Specification", ranked[0].specification], styles=[2, 4])
-    _append_row(
-        data,
-        3,
-        ["Cell format", "STATUS / offered value / deterministic reason"],
-        styles=[2, 11],
-        height=28,
+    root, data = _new_sheet(
+        freeze_rows=4,
+        freeze_columns=3,
+        widths=[14, 28, 18] + [36] * len(ranked),
     )
+    _append_row(data, 1, ["requirement-by-vendor matrix"], [1], height=28)
+    _append_row(data, 2, ["Specification", ranked[0].specification], [2, 4])
+    _append_row(data, 3, ["Cell format", "STATUS / offered value / deterministic reason"], [2, 11], height=28)
     headers = ["Requirement", "Parameter", "Required", *[report.vendor for report in ranked]]
-    _append_row(data, 4, headers, styles=[3] * len(headers), height=34)
+    _append_row(data, 4, headers, [3] * len(headers), height=34)
 
-    vendor_maps = [
-        {finding.requirement.id: finding for finding in report.findings}
-        for report in ranked
-    ]
+    vendor_maps = [{finding.requirement.id: finding for finding in report.findings} for report in ranked]
     for offset, requirement in enumerate(requirements, start=1):
         values: list[object] = [requirement.id, requirement.parameter, _required_text(requirement)]
         styles = [4, 4, 4]
@@ -238,11 +216,14 @@ def _matrix_sheet(ranked: list[ComplianceReport], requirements: list[Requirement
                 continue
             offered = finding.vendor_fact.raw_value if finding.vendor_fact else "—"
             values.append(f"{finding.status.value}\n{offered}\n{finding.reason}")
-            styles.append(_style_for_status(finding.status))
-        _append_row(data, 4 + offset, values, styles=styles, height=54)
+            styles.append(_status_style(finding.status))
+        _append_row(data, 4 + offset, values, styles, height=54)
 
-    _add_merge(root, f"A1:{last_column}1")
-    _add_filter(root, f"A4:{last_column}{4 + len(requirements)}")
+    _finish_sheet(
+        root,
+        auto_filter=f"A4:{last_column}{4 + len(requirements)}",
+        merges=[f"A1:{last_column}1"],
+    )
     return _xml_bytes(root)
 
 
@@ -263,18 +244,18 @@ def _audit_sheet(ranked: list[ComplianceReport]) -> bytes:
         "Vendor Section",
         "Reason",
     ]
-    row_count = 4 + sum(len(report.findings) for report in ranked)
-    if row_count > _MAX_ROWS:
+    finding_count = sum(len(report.findings) for report in ranked)
+    if 4 + finding_count > _MAX_ROWS:
         raise ValueError("too many findings for XLSX audit sheet")
-
-    root, data = _base_worksheet(freeze_rows=4)
-    _add_columns(root, [8, 30, 12, 14, 16, 28, 18, 24, 13, 12, 26, 12, 28, 54])
     last_column = _column_name(len(headers))
-
-    _append_row(data, 1, ["technical compliance audit"], styles=[1], height=28)
-    _append_row(data, 2, ["Specification", ranked[0].specification], styles=[2, 4])
-    _append_row(data, 3, ["Generated by", f"bidlint v{__version__}"], styles=[2, 4])
-    _append_row(data, 4, headers, styles=[3] * len(headers), height=28)
+    root, data = _new_sheet(
+        freeze_rows=4,
+        widths=[8, 30, 12, 14, 16, 28, 18, 24, 13, 12, 26, 12, 28, 54],
+    )
+    _append_row(data, 1, ["technical compliance audit"], [1], height=28)
+    _append_row(data, 2, ["Specification", ranked[0].specification], [2, 4])
+    _append_row(data, 3, ["Generated by", f"bidlint v{__version__}"], [2, 4])
+    _append_row(data, 4, headers, [3] * len(headers), height=28)
 
     row = 5
     for rank, report in enumerate(ranked, start=1):
@@ -283,7 +264,6 @@ def _audit_sheet(ranked: list[ComplianceReport]) -> bytes:
             fact = finding.vendor_fact
             spec_source = requirement.source
             vendor_source = fact.source if fact else None
-            status_style = _style_for_status(finding.status)
             _append_row(
                 data,
                 row,
@@ -303,13 +283,16 @@ def _audit_sheet(ranked: list[ComplianceReport]) -> bytes:
                     vendor_source.section if vendor_source and vendor_source.section else "",
                     finding.reason,
                 ],
-                styles=[6, 4, 5, status_style, 4, 4, 4, 4, 12, 6, 11, 6, 11, 11],
+                [6, 4, 5, _status_style(finding.status), 4, 4, 4, 4, 12, 6, 11, 6, 11, 11],
                 height=34,
             )
             row += 1
 
-    _add_merge(root, f"A1:{last_column}1")
-    _add_filter(root, f"A4:{last_column}{row - 1}")
+    _finish_sheet(
+        root,
+        auto_filter=f"A4:{last_column}{row - 1}",
+        merges=[f"A1:{last_column}1"],
+    )
     return _xml_bytes(root)
 
 
@@ -320,20 +303,20 @@ def _styles_xml() -> bytes:
     ET.SubElement(num_fmts, _q("numFmt"), {"numFmtId": "165", "formatCode": "0.000"})
 
     fonts = ET.SubElement(root, _q("fonts"), {"count": "3"})
-    font = ET.SubElement(fonts, _q("font"))
-    ET.SubElement(font, _q("sz"), {"val": "11"})
-    ET.SubElement(font, _q("name"), {"val": "Calibri"})
-    ET.SubElement(font, _q("family"), {"val": "2"})
-    title = ET.SubElement(fonts, _q("font"))
-    ET.SubElement(title, _q("b"))
-    ET.SubElement(title, _q("sz"), {"val": "18"})
-    ET.SubElement(title, _q("color"), {"rgb": "FFFFFFFF"})
-    ET.SubElement(title, _q("name"), {"val": "Calibri"})
-    header = ET.SubElement(fonts, _q("font"))
-    ET.SubElement(header, _q("b"))
-    ET.SubElement(header, _q("sz"), {"val": "11"})
-    ET.SubElement(header, _q("color"), {"rgb": "FFFFFFFF"})
-    ET.SubElement(header, _q("name"), {"val": "Calibri"})
+    default_font = ET.SubElement(fonts, _q("font"))
+    ET.SubElement(default_font, _q("sz"), {"val": "11"})
+    ET.SubElement(default_font, _q("name"), {"val": "Calibri"})
+    ET.SubElement(default_font, _q("family"), {"val": "2"})
+    title_font = ET.SubElement(fonts, _q("font"))
+    ET.SubElement(title_font, _q("b"))
+    ET.SubElement(title_font, _q("sz"), {"val": "18"})
+    ET.SubElement(title_font, _q("color"), {"rgb": "FFFFFFFF"})
+    ET.SubElement(title_font, _q("name"), {"val": "Calibri"})
+    header_font = ET.SubElement(fonts, _q("font"))
+    ET.SubElement(header_font, _q("b"))
+    ET.SubElement(header_font, _q("sz"), {"val": "11"})
+    ET.SubElement(header_font, _q("color"), {"rgb": "FFFFFFFF"})
+    ET.SubElement(header_font, _q("name"), {"val": "Calibri"})
 
     fills = ET.SubElement(root, _q("fills"), {"count": "8"})
     fill = ET.SubElement(fills, _q("fill"))
@@ -352,12 +335,12 @@ def _styles_xml() -> bytes:
         ET.SubElement(border, _q(edge))
     border = ET.SubElement(borders, _q("border"))
     for edge in ["left", "right", "top", "bottom"]:
-        element = ET.SubElement(border, _q(edge), {"style": "thin"})
-        ET.SubElement(element, _q("color"), {"rgb": "FFE2E8F0"})
+        item = ET.SubElement(border, _q(edge), {"style": "thin"})
+        ET.SubElement(item, _q("color"), {"rgb": "FFE2E8F0"})
     ET.SubElement(border, _q("diagonal"))
 
-    cell_style_xfs = ET.SubElement(root, _q("cellStyleXfs"), {"count": "1"})
-    ET.SubElement(cell_style_xfs, _q("xf"), {"numFmtId": "0", "fontId": "0", "fillId": "0", "borderId": "0"})
+    style_xfs = ET.SubElement(root, _q("cellStyleXfs"), {"count": "1"})
+    ET.SubElement(style_xfs, _q("xf"), {"numFmtId": "0", "fontId": "0", "fillId": "0", "borderId": "0"})
     cell_xfs = ET.SubElement(root, _q("cellXfs"), {"count": "13"})
 
     def add_xf(
@@ -387,34 +370,38 @@ def _styles_xml() -> bytes:
             attrs["applyBorder"] = "1"
         xf = ET.SubElement(cell_xfs, _q("xf"), attrs)
         if horizontal or vertical or wrap:
-            alignment_attrs: dict[str, str] = {}
+            alignment: dict[str, str] = {}
             if horizontal:
-                alignment_attrs["horizontal"] = horizontal
+                alignment["horizontal"] = horizontal
             if vertical:
-                alignment_attrs["vertical"] = vertical
+                alignment["vertical"] = vertical
             if wrap:
-                alignment_attrs["wrapText"] = "1"
-            ET.SubElement(xf, _q("alignment"), alignment_attrs)
+                alignment["wrapText"] = "1"
+            ET.SubElement(xf, _q("alignment"), alignment)
             xf.set("applyAlignment", "1")
 
-    add_xf()  # 0 default
-    add_xf(font_id=1, fill_id=2, vertical="center")  # 1 title
-    add_xf(font_id=2, vertical="center")  # 2 metadata label
-    add_xf(font_id=2, fill_id=3, border_id=1, horizontal="center", vertical="center", wrap=True)  # 3 header
-    add_xf(border_id=1, vertical="top")  # 4 body
-    add_xf(num_fmt=164, border_id=1, horizontal="right", vertical="top")  # 5 percentage-points score
-    add_xf(border_id=1, horizontal="right", vertical="top")  # 6 integer
-    add_xf(fill_id=4, border_id=1, vertical="top", wrap=True)  # 7 pass
-    add_xf(fill_id=5, border_id=1, vertical="top", wrap=True)  # 8 deviation
-    add_xf(fill_id=6, border_id=1, vertical="top", wrap=True)  # 9 missing
-    add_xf(fill_id=7, border_id=1, vertical="top", wrap=True)  # 10 review
-    add_xf(border_id=1, vertical="top", wrap=True)  # 11 wrapped body
-    add_xf(num_fmt=165, border_id=1, horizontal="right", vertical="top")  # 12 confidence
+    add_xf()
+    add_xf(font_id=1, fill_id=2, vertical="center")
+    add_xf(font_id=2, vertical="center")
+    add_xf(font_id=2, fill_id=3, border_id=1, horizontal="center", vertical="center", wrap=True)
+    add_xf(border_id=1, vertical="top")
+    add_xf(num_fmt=164, border_id=1, horizontal="right", vertical="top")
+    add_xf(border_id=1, horizontal="right", vertical="top")
+    add_xf(fill_id=4, border_id=1, vertical="top", wrap=True)
+    add_xf(fill_id=5, border_id=1, vertical="top", wrap=True)
+    add_xf(fill_id=6, border_id=1, vertical="top", wrap=True)
+    add_xf(fill_id=7, border_id=1, vertical="top", wrap=True)
+    add_xf(border_id=1, vertical="top", wrap=True)
+    add_xf(num_fmt=165, border_id=1, horizontal="right", vertical="top")
 
     cell_styles = ET.SubElement(root, _q("cellStyles"), {"count": "1"})
     ET.SubElement(cell_styles, _q("cellStyle"), {"name": "Normal", "xfId": "0", "builtinId": "0"})
     ET.SubElement(root, _q("dxfs"), {"count": "0"})
-    ET.SubElement(root, _q("tableStyles"), {"count": "0", "defaultTableStyle": "TableStyleMedium2", "defaultPivotStyle": "PivotStyleLight16"})
+    ET.SubElement(
+        root,
+        _q("tableStyles"),
+        {"count": "0", "defaultTableStyle": "TableStyleMedium2", "defaultPivotStyle": "PivotStyleLight16"},
+    )
     return _xml_bytes(root)
 
 
@@ -422,7 +409,7 @@ def _workbook_xml() -> bytes:
     root = ET.Element(_q("workbook"))
     ET.SubElement(root, _q("workbookPr"))
     views = ET.SubElement(root, _q("bookViews"))
-    ET.SubElement(views, _q("workbookView"), {"xWindow": "0", "yWindow": "0", "windowWidth": "24000", "windowHeight": "12000"})
+    ET.SubElement(views, _q("workbookView"), {"windowWidth": "24000", "windowHeight": "12000"})
     sheets = ET.SubElement(root, _q("sheets"))
     for index, name in enumerate(["Ranking", "Matrix", "Audit"], start=1):
         ET.SubElement(
