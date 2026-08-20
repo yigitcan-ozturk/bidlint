@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bidlint"
-version = "0.5.0"
+version = "0.6.0.dev0"
 description = "Deterministic technical specification and vendor submittal compliance analysis."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Yiğitcan Öztürk" }]
-keywords = ["engineering", "architecture", "procurement", "specifications", "submittals", "compliance", "pdf", "ifc"]
+keywords = ["engineering", "architecture", "procurement", "specifications", "submittals", "compliance", "pdf", "ifc", "xlsx"]
 dependencies = ["pypdf>=5.9,<7"]
 classifiers = [
   "Development Status :: 3 - Alpha",
