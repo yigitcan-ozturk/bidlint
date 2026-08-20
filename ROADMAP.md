@@ -63,7 +63,7 @@
 - [x] fully scoped mixed-package ranking when IFC/XLSX selectors are required
 - [x] package-level audit surface for all contributing and conflicting evidence
 - [x] sanitized pump, motor, valve, HVAC and electrical multi-document package fixtures
-- [ ] freeze and publish stable v0.7.0 release
+- [x] freeze and publish stable v0.7.0 release
 
 ## v0.8 — procurement workflow
 - [ ] mandatory technical knockout criteria

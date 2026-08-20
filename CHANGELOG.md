@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.7.0 — 2026-08-20
+
+### Added
+
+- deterministic direct-child multi-file vendor packages spanning PDF, formula-free XLSX and explicitly scoped IFC evidence
+- explicit package document classification for specification, datasheet, compliance schedule, technical offer and ignored documents
+- exact programmatic document-class overrides without hidden file-type authority
+- opt-in evidence-priority policies across technical document classes while preserving same-class conflicts as `REVIEW`
+- alias-aware package consolidation using the existing project terminology mapping before duplicate/conflict evaluation
+- package-level evidence audit dispositions for selected, equivalent-duplicate, conflict and lower-priority facts
+- JSON-ready `VendorPackage.to_audit_dict()` with classifications, ignored documents, priority policy, raw evidence, consolidated facts and conflicts
+- mixed direct-file/package ranking with IFC/XLSX selectors scoped only to relevant vendor evidence
+- sanitized multi-document regression packages for pump, motor, valve, HVAC and electrical scenarios
+- vendor-package reference documentation and v0.7.0 release notes
+
+### Changed
+
+- package evidence is processed in deterministic filename order and equivalent numeric evidence may collapse through existing compatible unit conversions
+- conflicting evidence no longer risks silent source selection; unresolved package disagreement produces provenance-preserving `REVIEW`
+- copied specifications and ignored/commercial documents are excluded from technical vendor evidence
+- `--aliases` is threaded through CLI package intake so consolidation and requirement matching use the same normalized terminology mapping
+- package and runtime version are frozen at `0.7.0`
+
 ## 0.6.0 — 2026-08-20
 
 ### Added

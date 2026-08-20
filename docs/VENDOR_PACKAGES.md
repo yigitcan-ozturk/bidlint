@@ -1,6 +1,6 @@
 # Vendor packages
 
-`v0.7.0.dev0` introduces deterministic multi-file vendor intake with explicit document classification, project aliases and opt-in evidence priority.
+`v0.7.0` introduces deterministic multi-file vendor intake with explicit document classification, project aliases and opt-in evidence priority.
 
 A vendor package is a directory whose supported direct-child files are treated as one supplier evidence set.
 
