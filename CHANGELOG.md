@@ -139,7 +139,7 @@
 
 Initial deterministic compliance engine.
 
-- page-preserving PDF text extraction
+- page-preserving PDF extraction
 - normative requirement detection
 - numeric comparator parsing
 - vendor key/value extraction
