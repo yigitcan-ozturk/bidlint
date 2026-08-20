@@ -12,6 +12,8 @@
 - deterministic reconstruction for parameter labels split by an explicit trailing hyphen
 - sanitized motor, pump and valve datasheet layout fixtures rendered into temporary PDFs during tests
 - fixture coverage for multi-page source provenance, metadata noise, side-by-side fields and wrapped table continuations
+- multi-vendor Markdown tabulation with deterministic ranking and requirement-by-vendor decision matrix
+- `rank --top N` for compact terminal ranking while preserving complete exports
 - deterministic voltage conversion for `mV`, `V` and `kV`
 - deterministic current conversion for `mA`, `A` and `kA`
 - deterministic frequency conversion for `Hz`, `kHz` and `MHz`
@@ -24,6 +26,7 @@
 
 ### Changed
 
+- `rank --output` now supports Markdown (`.md` / `.markdown`) in addition to JSON, HTML and CSV
 - ambiguous unrecognized 3+ column vendor rows are skipped instead of being flattened into false two-column facts
 - unmarked wrapped labels and arbitrary missing table cells remain unsupported instead of being guessed
 - development version advanced to `0.2.1.dev0`
