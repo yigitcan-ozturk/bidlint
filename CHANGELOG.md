@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 — 2026-08-20
 
 ### Added
 
@@ -18,7 +18,6 @@
 
 ### Changed
 
-- development version advanced to `0.4.0.dev0`
 - MCP remains an optional integration; the base bidlint install keeps no MCP SDK dependency
 - long-running jobs use bidlint lifecycle tools rather than claiming native MCP Tasks-extension support before the Python SDK exposes it
 
@@ -124,8 +123,8 @@ Initial deterministic compliance engine.
 - vendor key/value extraction
 - deterministic parameter matching
 - PASS / DEVIATION / MISSING / REVIEW findings
-- JSON, Markdown, CSV and self-contained HTML output
+- JSON / CSV / Markdown / HTML output
 - multi-vendor technical compliance ranking
 - CLI and test suite
-- CI matrix for Python 3.11, 3.12 and 3.13
+- CI matrix for Python 3.11–3.13
 - Dependabot configuration for Python and GitHub Actions dependencies
