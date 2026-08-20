@@ -92,6 +92,7 @@ _STOPWORDS = {
 }
 
 TableHeader = tuple[int, int | None, int, int]
+TableHeaders = tuple[TableHeader, ...]
 CoordinateRows = dict[str, deque[list[str]]]
 
 
@@ -128,12 +129,7 @@ def _line_key(text: str) -> str:
 
 
 def _parse_numeric_value(raw_value: str) -> tuple[float | None, str | None]:
-    """Parse only values that are wholly numeric + optional unit.
-
-    Full matching is deliberate: alloy grades and descriptive values such as
-    ``316L stainless steel`` remain qualitative instead of becoming a false
-    numeric value of 316.
-    """
+    """Parse only values that are wholly numeric + optional unit."""
     match = _NUMERIC_VALUE.fullmatch(raw_value)
     if not match:
         return None, None
@@ -184,15 +180,41 @@ def _normalize_header(cell: str) -> str:
     return " ".join(cell.lower().replace("_", " ").split())
 
 
-def _table_header(columns: list[str]) -> TableHeader | None:
-    normalized = [_normalize_header(cell) for cell in columns]
-    parameter_index = next((i for i, cell in enumerate(normalized) if cell in _PARAMETER_HEADERS), None)
-    offered_index = next((i for i, cell in enumerate(normalized) if cell in _OFFERED_HEADERS), None)
-    if parameter_index is None or offered_index is None or parameter_index == offered_index:
-        return None
+def _table_headers(columns: list[str]) -> TableHeaders:
+    """Return explicit parameter/value groups from one header row.
 
-    unit_index = next((i for i, cell in enumerate(normalized) if cell in _UNIT_HEADERS), None)
-    return parameter_index, unit_index, offered_index, len(columns)
+    Each offered/value header is paired only with the nearest preceding
+    parameter-like header since the previous offered group. This supports
+    repeated side-by-side header groups without inferring group boundaries from
+    body-row values.
+    """
+    normalized = [_normalize_header(cell) for cell in columns]
+    offered_indices = [i for i, cell in enumerate(normalized) if cell in _OFFERED_HEADERS]
+    groups: list[TableHeader] = []
+    lower_bound = 0
+
+    for offered_index in offered_indices:
+        parameter_candidates = [
+            i
+            for i in range(lower_bound, offered_index)
+            if normalized[i] in _PARAMETER_HEADERS
+        ]
+        if not parameter_candidates:
+            continue
+        parameter_index = parameter_candidates[-1]
+        unit_index = next(
+            (i for i in range(parameter_index + 1, offered_index) if normalized[i] in _UNIT_HEADERS),
+            None,
+        )
+        groups.append((parameter_index, unit_index, offered_index, len(columns)))
+        lower_bound = offered_index + 1
+
+    return tuple(groups)
+
+
+def _table_header(columns: list[str]) -> TableHeader | None:
+    groups = _table_headers(columns)
+    return groups[0] if len(groups) == 1 else None
 
 
 def _table_row_fact(
@@ -229,7 +251,6 @@ def _paired_layout_facts(
     line_no: int,
     columns: list[str],
 ) -> list[VendorFact] | None:
-    """Parse two numeric label/value pairs rendered on the same visual row."""
     if len(columns) != 4:
         return None
 
@@ -253,7 +274,6 @@ def _wrapped_offered_fact(
     next_columns: list[str],
     header: TableHeader,
 ) -> VendorFact | None:
-    """Complete a row only when the final offered cell is an explicit numeric continuation."""
     parameter_index, _, offered_index, header_width = header
     if offered_index != header_width - 1 or len(columns) != header_width - 1:
         return None
@@ -273,7 +293,6 @@ def _hyphenated_label_fact(
     header: TableHeader,
     table_fact: VendorFact,
 ) -> VendorFact | None:
-    """Join an explicitly hyphenated parameter label to a single-cell continuation line."""
     parameter_index, _, _, _ = header
     if parameter_index >= len(columns):
         return None
@@ -310,7 +329,6 @@ def _column_for_x(x: float, anchors: tuple[float, ...]) -> int | None:
 
 
 def _positioned_row_cells(row: PositionedRow, anchors: tuple[float, ...]) -> list[str] | None:
-    """Assign fragments to explicit header anchors only when the x position is unambiguous."""
     if len(row.fragments) == 0:
         return None
 
@@ -366,7 +384,6 @@ def _merged_geometry_cells(
     header: TableHeader,
     anchors: tuple[float, ...],
 ) -> list[str] | None:
-    """Recover only rows whose merged rectangles leave parameter/offered cells distinct."""
     spans = _row_rectangle_spans(page, row, anchors)
     merged = [(rectangle, columns) for rectangle, columns in spans if len(columns) > 1]
     if not merged:
@@ -392,8 +409,6 @@ def _merged_geometry_cells(
             return None
 
         if any(len(columns) > 1 for _, columns in containing):
-            # Content inside a merged intermediate cell cannot be assigned to a
-            # single semantic column, so it is deliberately ignored.
             continue
 
         column = _column_for_x(fragment.x, anchors)
@@ -439,7 +454,6 @@ def _geometry_merged_rows(page: PositionedPage | None) -> CoordinateRows:
 
 
 def _coordinate_sparse_rows(page: PositionedPage | None) -> CoordinateRows:
-    """Index rows whose blank intermediate cells are proven by header-aligned coordinates."""
     candidates: CoordinateRows = defaultdict(deque)
     if page is None:
         return candidates
@@ -457,8 +471,6 @@ def _coordinate_sparse_rows(page: PositionedPage | None) -> CoordinateRows:
 
         active_header, anchors = active
         if _row_has_merged_geometry(page, row, anchors):
-            # Explicit geometry takes precedence. Do not let coordinate-only
-            # fallback reinterpret content inside a merged cell as a unit/value.
             continue
 
         columns = _positioned_row_cells(row, anchors)
@@ -476,8 +488,6 @@ def _coordinate_sparse_rows(page: PositionedPage | None) -> CoordinateRows:
             active = None
             continue
 
-        # Single-cell continuation rows are handled by the existing explicit
-        # wrapped-value / hyphen rules and do not prove a sparse table row.
         if not label or not columns[offered_index].strip():
             continue
         if not _looks_like_label(label):
@@ -555,23 +565,10 @@ def parse_requirements(path: str | Path) -> list[Requirement]:
 def parse_vendor_facts(path: str | Path) -> list[VendorFact]:
     """Extract deterministic vendor facts from common datasheet layouts.
 
-    Supported forms are deliberately explicit:
-
-    - ``Parameter: value``
-    - two-column rows separated by a tab or at least two spaces
-    - ``Parameter:`` followed by a value on the next non-empty line
-    - a label followed by a *numeric + unit* value on the next line
-    - layout-preserved tables with explicit parameter/value headers
-    - coordinate-aligned sparse table rows with visually blank intermediate cells
-    - rows with explicit rectangle geometry merging only intermediate table cells
-    - two numeric label/value pairs rendered side-by-side on one visual row
-    - offered values wrapped to the next line when the offered column is last
-    - parameter labels split with an explicit trailing hyphen
-
-    Table reconstruction remains conservative: only explicit headers, fully
-    numeric side-by-side pairs, explicit continuation evidence, coordinate
-    alignment, or explicit safe rectangle geometry are accepted. Ambiguous rows
-    are skipped rather than flattened into false facts.
+    Repeated side-by-side table groups are accepted only when each group has an
+    explicit parameter-like header and offered/value header in the same header
+    row. Incomplete repeated body rows are skipped as a whole rather than
+    partially reinterpreted.
     """
     path = Path(path)
     pages = extract_pages(path, layout=True)
@@ -585,15 +582,40 @@ def parse_vendor_facts(path: str | Path) -> list[VendorFact]:
         coordinate_rows = _coordinate_sparse_rows(positioned_page)
         index = 0
         active_table: TableHeader | None = None
+        active_repeated: TableHeaders | None = None
+
         while index < len(lines):
             line_no, line = lines[index]
             columns = _split_layout_columns(line)
 
-            header = _table_header(columns)
-            if header is not None:
-                active_table = header
+            headers = _table_headers(columns)
+            if len(headers) > 1:
+                active_repeated = headers
+                active_table = None
                 index += 1
                 continue
+            if len(headers) == 1:
+                active_table = headers[0]
+                active_repeated = None
+                index += 1
+                continue
+
+            if active_repeated is not None:
+                header_width = active_repeated[0][3]
+                if len(columns) == header_width:
+                    repeated_facts = [
+                        _table_row_fact(path, page, line_no, columns, header)
+                        for header in active_repeated
+                    ]
+                    if all(fact is not None for fact in repeated_facts):
+                        facts.extend(fact for fact in repeated_facts if fact is not None)
+                        index += 1
+                        continue
+
+                active_repeated = None
+                if columns and _normalize_header(columns[0]) in _TABLE_TERMINATORS:
+                    index += 1
+                    continue
 
             if active_table is not None:
                 next_columns: list[str] = []
@@ -675,8 +697,6 @@ def parse_vendor_facts(path: str | Path) -> list[VendorFact]:
                 index += 1
                 continue
 
-            # A visually separated 3+ column row without a recognized table
-            # schema is ambiguous. Do not flatten it into a fake two-column fact.
             if len(columns) >= 3:
                 index += 1
                 continue
