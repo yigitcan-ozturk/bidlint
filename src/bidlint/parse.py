@@ -10,6 +10,10 @@ _REQUIREMENT_HINT = re.compile(
     r"\b(shall|must|required|minimum|maximum|at least|not less than|not more than|not exceed|no less than|no more than)\b",
     re.IGNORECASE,
 )
+_LABEL_NORMATIVE_HINT = re.compile(
+    r"\b(shall|must|required|at least|not less than|not more than|not exceed|no less than|no more than)\b",
+    re.IGNORECASE,
+)
 
 _COMPARATOR_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (
@@ -135,7 +139,7 @@ def _looks_like_label(text: str) -> bool:
         return False
     if not re.search(r"[A-Za-z]", text):
         return False
-    if _SECTION.match(text) or _REQUIREMENT_HINT.search(text):
+    if _SECTION.match(text) or _LABEL_NORMATIVE_HINT.search(text):
         return False
     return not _NUMERIC_VALUE.fullmatch(text)
 
