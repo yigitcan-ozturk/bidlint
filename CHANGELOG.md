@@ -123,8 +123,8 @@ Initial deterministic compliance engine.
 - vendor key/value extraction
 - deterministic parameter matching
 - PASS / DEVIATION / MISSING / REVIEW findings
-- JSON / CSV / Markdown / HTML output
+- JSON, Markdown, CSV and self-contained HTML output
 - multi-vendor technical compliance ranking
 - CLI and test suite
-- CI matrix for Python 3.11–3.13
+- CI matrix for Python 3.11, 3.12 and 3.13
 - Dependabot configuration for Python and GitHub Actions dependencies
