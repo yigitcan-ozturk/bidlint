@@ -14,6 +14,12 @@ class Status(str, Enum):
     REVIEW = "REVIEW"
 
 
+class KnockoutStatus(str, Enum):
+    ELIGIBLE = "ELIGIBLE"
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"
+    DISQUALIFIED = "DISQUALIFIED"
+
+
 @dataclass(slots=True)
 class SourceRef:
     document: str
@@ -58,10 +64,62 @@ class Finding:
 
 
 @dataclass(slots=True)
+class KnockoutCriterion:
+    requirement_id: str
+    parameter: str
+    finding_status: Status
+    reason: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "requirement_id": self.requirement_id,
+            "parameter": self.parameter,
+            "finding_status": self.finding_status.value,
+            "reason": self.reason,
+        }
+
+
+@dataclass(slots=True)
+class KnockoutAssessment:
+    status: KnockoutStatus
+    criteria: list[KnockoutCriterion] = field(default_factory=list)
+
+    @property
+    def requirement_ids(self) -> list[str]:
+        return [criterion.requirement_id for criterion in self.criteria]
+
+    @property
+    def failed_requirement_ids(self) -> list[str]:
+        return [
+            criterion.requirement_id
+            for criterion in self.criteria
+            if criterion.finding_status in {Status.DEVIATION, Status.MISSING}
+        ]
+
+    @property
+    def review_requirement_ids(self) -> list[str]:
+        return [
+            criterion.requirement_id
+            for criterion in self.criteria
+            if criterion.finding_status == Status.REVIEW
+        ]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status.value,
+            "requirement_ids": self.requirement_ids,
+            "failed_requirement_ids": self.failed_requirement_ids,
+            "review_requirement_ids": self.review_requirement_ids,
+            "criteria": [criterion.to_dict() for criterion in self.criteria],
+        }
+
+
+@dataclass(slots=True)
 class ComplianceReport:
     specification: str
     vendor: str
     findings: list[Finding] = field(default_factory=list)
+    knockout: KnockoutAssessment | None = None
 
     @property
     def counts(self) -> dict[str, int]:
@@ -76,7 +134,7 @@ class ComplianceReport:
         return round(100.0 * passed / len(evaluable), 1)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        data: dict[str, Any] = {
             "tool": "bidlint",
             "version": __version__,
             "specification": self.specification,
@@ -85,3 +143,6 @@ class ComplianceReport:
             "counts": self.counts,
             "findings": [f.to_dict() for f in self.findings],
         }
+        if self.knockout is not None:
+            data["knockout"] = self.knockout.to_dict()
+        return data

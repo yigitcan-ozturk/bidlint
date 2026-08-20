@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bidlint"
-version = "0.7.0"
+version = "0.8.0.dev0"
 description = "Deterministic technical specification and vendor submittal compliance analysis."
 readme = "README.md"
 requires-python = ">=3.11"

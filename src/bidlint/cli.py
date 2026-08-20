@@ -7,6 +7,7 @@ from . import __version__
 from .compare import compare
 from .document_policy import classify_document, is_evidence_class
 from .inputs import parse_vendor_input
+from .knockout import apply_knockouts, load_knockout_file, validate_knockout_requirement_ids
 from .parse import parse_requirements
 from .portfolio import portfolio_to_html, portfolio_to_markdown, rank_reports, write_portfolio_csv
 from .report import portfolio_to_json, to_html, to_json, to_markdown, write_csv
@@ -17,17 +18,18 @@ from .xlsx import write_portfolio_xlsx
 
 def _summary(report) -> str:
     c = report.counts
-    return "\n".join(
-        [
-            "BIDLINT — TECHNICAL COMPLIANCE",
-            "=" * 32,
-            f"Score      : {report.compliance_score:.1f}%",
-            f"PASS       : {c['PASS']}",
-            f"DEVIATION  : {c['DEVIATION']}",
-            f"MISSING    : {c['MISSING']}",
-            f"REVIEW     : {c['REVIEW']}",
-        ]
-    )
+    lines = [
+        "BIDLINT — TECHNICAL COMPLIANCE",
+        "=" * 32,
+        f"Score      : {report.compliance_score:.1f}%",
+        f"PASS       : {c['PASS']}",
+        f"DEVIATION  : {c['DEVIATION']}",
+        f"MISSING    : {c['MISSING']}",
+        f"REVIEW     : {c['REVIEW']}",
+    ]
+    if report.knockout is not None:
+        lines.append(f"Knockout   : {report.knockout.status.value}")
+    return "\n".join(lines)
 
 
 def _positive_int(value: str) -> int:
@@ -75,6 +77,14 @@ def _add_matching_options(command: argparse.ArgumentParser) -> None:
         "--aliases",
         metavar="FILE.json",
         help="custom terminology aliases as a JSON object mapping vendor terms to canonical parameters",
+    )
+
+
+def _add_procurement_options(command: argparse.ArgumentParser) -> None:
+    command.add_argument(
+        "--knockouts",
+        metavar="FILE.json",
+        help="explicit knockout policy JSON containing requirement_ids",
     )
 
 
@@ -175,6 +185,7 @@ def build_parser() -> argparse.ArgumentParser:
     compare_cmd.add_argument("specification")
     compare_cmd.add_argument("vendor")
     _add_matching_options(compare_cmd)
+    _add_procurement_options(compare_cmd)
     _add_ifc_options(compare_cmd)
     _add_xlsx_options(compare_cmd)
     compare_cmd.add_argument("--json", action="store_true", help="print machine-readable JSON")
@@ -198,6 +209,7 @@ def build_parser() -> argparse.ArgumentParser:
     rank_cmd.add_argument("specification")
     rank_cmd.add_argument("vendors", nargs="+", help="two or more vendor files or package directories")
     _add_matching_options(rank_cmd)
+    _add_procurement_options(rank_cmd)
     _add_ifc_options(rank_cmd)
     _add_xlsx_options(rank_cmd)
     rank_cmd.add_argument("--json", action="store_true", help="print portfolio JSON")
@@ -237,6 +249,13 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError) as exc:
         raise SystemExit(f"unable to load --aliases: {exc}") from exc
 
+    try:
+        knockout_ids = load_knockout_file(args.knockouts) if args.knockouts else None
+        if knockout_ids is not None:
+            knockout_ids = validate_knockout_requirement_ids(requirements, knockout_ids)
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"unable to load --knockouts: {exc}") from exc
+
     if args.command == "rank":
         if len(args.vendors) < 2:
             raise SystemExit("rank requires at least two vendor inputs")
@@ -254,16 +273,18 @@ def main(argv: list[str] | None = None) -> int:
                 facts = _parse_cli_vendor(vendor, args, mixed_rank=True, aliases=aliases)
             except (OSError, RuntimeError, ValueError) as exc:
                 raise SystemExit(f"unable to parse vendor input {vendor}: {exc}") from exc
-            reports.append(
-                compare(
-                    requirements,
-                    facts,
-                    Path(args.specification).name,
-                    Path(vendor).name,
-                    threshold=args.threshold,
-                    aliases=aliases,
-                )
+            report = compare(
+                requirements,
+                facts,
+                Path(args.specification).name,
+                Path(vendor).name,
+                threshold=args.threshold,
+                aliases=aliases,
             )
+            if knockout_ids is not None:
+                apply_knockouts(report, knockout_ids)
+            reports.append(report)
+
         ranked = rank_reports(reports)
         payload = portfolio_to_json(reports)
         if args.output:
@@ -276,9 +297,11 @@ def main(argv: list[str] | None = None) -> int:
             shown = ranked[: args.top] if args.top else ranked
             for index, report in enumerate(shown, start=1):
                 c = report.counts
+                gate = f"  GATE {report.knockout.status.value}" if report.knockout is not None else ""
                 print(
                     f"{index:>2}. {report.vendor:<30} {report.compliance_score:>5.1f}%  "
                     f"PASS {c['PASS']}  DEV {c['DEVIATION']}  MISS {c['MISSING']}  REVIEW {c['REVIEW']}"
+                    f"{gate}"
                 )
             if len(shown) < len(ranked):
                 remaining = len(ranked) - len(shown)
@@ -298,6 +321,8 @@ def main(argv: list[str] | None = None) -> int:
         threshold=args.threshold,
         aliases=aliases,
     )
+    if knockout_ids is not None:
+        apply_knockouts(report, knockout_ids)
 
     if args.output:
         _write_report(report, args.output)

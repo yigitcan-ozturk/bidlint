@@ -66,7 +66,7 @@
 - [x] freeze and publish stable v0.7.0 release
 
 ## v0.8 — procurement workflow
-- [ ] mandatory technical knockout criteria
+- [x] mandatory technical knockout criteria
 - [ ] bidder clarification list and unanswered requirement register
 - [ ] deviation register and review queue
 - [ ] procurement-ready package ranking and supplier-scorecard hand-off

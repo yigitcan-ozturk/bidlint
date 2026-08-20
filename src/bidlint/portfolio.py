@@ -5,20 +5,34 @@ import html
 from pathlib import Path
 
 from . import __version__
-from .models import ComplianceReport
+from .models import ComplianceReport, KnockoutStatus
+
+
+_KNOCKOUT_RANK = {
+    KnockoutStatus.ELIGIBLE: 0,
+    KnockoutStatus.REVIEW_REQUIRED: 1,
+    KnockoutStatus.DISQUALIFIED: 2,
+}
 
 
 def rank_reports(reports: list[ComplianceReport]) -> list[ComplianceReport]:
     """Rank reports with a deterministic, documented tie-break order."""
-    return sorted(
-        reports,
-        key=lambda report: (
+    assessed = [report.knockout is not None for report in reports]
+    if any(assessed) and not all(assessed):
+        raise ValueError("cannot rank knockout-assessed and unassessed reports together")
+
+    def key(report: ComplianceReport):
+        base = (
             -report.compliance_score,
             report.counts["DEVIATION"] + report.counts["MISSING"],
             report.counts["REVIEW"],
             report.vendor.lower(),
-        ),
-    )
+        )
+        if report.knockout is None:
+            return base
+        return (_KNOCKOUT_RANK[report.knockout.status], *base)
+
+    return sorted(reports, key=key)
 
 
 def _required_text(report: ComplianceReport, requirement_id: str) -> str:
