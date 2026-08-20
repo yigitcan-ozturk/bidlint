@@ -80,11 +80,14 @@ class JobManager:
     def _recover_orphans(self) -> None:
         with self._lock:
             for path in self.jobs_dir.glob("*.json"):
+                job_id = path.stem
+                if len(job_id) != 32 or any(ch not in "0123456789abcdef" for ch in job_id):
+                    continue
                 try:
                     data = json.loads(path.read_text(encoding="utf-8"))
                 except (OSError, json.JSONDecodeError):
                     continue
-                if data.get("status") not in {"queued", "running"}:
+                if data.get("job_id") != job_id or data.get("status") not in {"queued", "running"}:
                     continue
                 data["status"] = "failed"
                 data["finished_at"] = _utc_now()
@@ -122,44 +125,48 @@ class JobManager:
         return self.status(job_id)
 
     def _run(self, job_id: str, runner: Callable[[], dict[str, Any]]) -> None:
-        with self._lock:
-            record = self._read_unlocked(job_id)
-            if record["status"] == "cancelled" or record.get("cancel_requested"):
-                record["status"] = "cancelled"
-                record["finished_at"] = _utc_now()
-                self._write_unlocked(record)
-                return
-            record["status"] = "running"
-            record["started_at"] = _utc_now()
-            self._write_unlocked(record)
-
         try:
-            result = runner()
-        except Exception as exc:  # job boundary must capture deterministic/parser failures for polling
+            with self._lock:
+                record = self._read_unlocked(job_id)
+                if record["status"] == "cancelled" or record.get("cancel_requested"):
+                    record["status"] = "cancelled"
+                    record["finished_at"] = _utc_now()
+                    self._write_unlocked(record)
+                    return
+                record["status"] = "running"
+                record["started_at"] = _utc_now()
+                self._write_unlocked(record)
+
+            try:
+                result = runner()
+            except Exception as exc:  # job boundary captures parser/evaluator failures for polling
+                with self._lock:
+                    record = self._read_unlocked(job_id)
+                    if record.get("cancel_requested"):
+                        record["status"] = "cancelled"
+                        record["error"] = None
+                    else:
+                        record["status"] = "failed"
+                        record["error"] = f"{type(exc).__name__}: {exc}"
+                    record["result"] = None
+                    record["finished_at"] = _utc_now()
+                    self._write_unlocked(record)
+                return
+
             with self._lock:
                 record = self._read_unlocked(job_id)
                 if record.get("cancel_requested"):
                     record["status"] = "cancelled"
-                    record["error"] = None
+                    record["result"] = None
                 else:
-                    record["status"] = "failed"
-                    record["error"] = f"{type(exc).__name__}: {exc}"
-                record["result"] = None
+                    record["status"] = "completed"
+                    record["result"] = result
+                record["error"] = None
                 record["finished_at"] = _utc_now()
                 self._write_unlocked(record)
-            return
-
-        with self._lock:
-            record = self._read_unlocked(job_id)
-            if record.get("cancel_requested"):
-                record["status"] = "cancelled"
-                record["result"] = None
-            else:
-                record["status"] = "completed"
-                record["result"] = result
-            record["error"] = None
-            record["finished_at"] = _utc_now()
-            self._write_unlocked(record)
+        finally:
+            with self._lock:
+                self._futures.pop(job_id, None)
 
     def status(self, job_id: str) -> dict[str, Any]:
         with self._lock:
@@ -197,6 +204,9 @@ class JobManager:
                 record["finished_at"] = _utc_now()
             self._write_unlocked(record)
             return self.status(job_id)
+
+    def shutdown(self, *, wait: bool = True) -> None:
+        self._executor.shutdown(wait=wait, cancel_futures=True)
 
 
 _MANAGERS: dict[Path, JobManager] = {}
