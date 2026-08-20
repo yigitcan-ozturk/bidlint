@@ -90,7 +90,7 @@ def _ifc_options_supplied(args: argparse.Namespace) -> bool:
 
 def _parse_cli_vendor(vendor: str, args: argparse.Namespace, *, mixed_rank: bool = False):
     suffix = Path(vendor).suffix.lower()
-    if mixed_rank and suffix == ".pdf":
+    if mixed_rank and suffix != ".ifc":
         return parse_vendor_input(vendor)
     return parse_vendor_input(
         vendor,
@@ -117,7 +117,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"bidlint {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    compare_cmd = sub.add_parser("compare", help="compare a specification PDF with one vendor PDF or IFC input")
+    compare_cmd = sub.add_parser(
+        "compare",
+        help="compare a specification PDF with one vendor PDF, XLSX or IFC input",
+    )
     compare_cmd.add_argument("specification")
     compare_cmd.add_argument("vendor")
     _add_matching_options(compare_cmd)
@@ -136,9 +139,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="supplier name used in --scorecard-output",
     )
 
-    rank_cmd = sub.add_parser("rank", help="compare multiple vendor PDF/IFC inputs against one specification")
+    rank_cmd = sub.add_parser(
+        "rank",
+        help="compare multiple vendor PDF/XLSX/IFC inputs against one specification",
+    )
     rank_cmd.add_argument("specification")
-    rank_cmd.add_argument("vendors", nargs="+", help="two or more vendor PDF/IFC files")
+    rank_cmd.add_argument("vendors", nargs="+", help="two or more vendor PDF/XLSX/IFC files")
     _add_matching_options(rank_cmd)
     _add_ifc_options(rank_cmd)
     rank_cmd.add_argument("--json", action="store_true", help="print portfolio JSON")
