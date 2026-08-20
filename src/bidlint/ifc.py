@@ -90,6 +90,10 @@ def _select_entities(model: Any, *, ifc_class: str | None, global_id: str | None
         raise ValueError(f"IFC class is not available in this schema: {ifc_class}") from exc
     if not entities:
         raise ValueError(f"no IFC elements found for class {ifc_class}")
+    if len(entities) > 1:
+        raise ValueError(
+            f"IFC class {ifc_class} matched {len(entities)} elements; use --ifc-guid to select one vendor element"
+        )
     return entities
 
 
