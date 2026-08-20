@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.1 — 2026-08-20
+
 ### Added
 
 - layout-preserving PDF extraction for vendor datasheets using pypdf layout mode
@@ -29,7 +31,6 @@
 - `rank --output` now supports Markdown (`.md` / `.markdown`) in addition to JSON, HTML and CSV
 - ambiguous unrecognized 3+ column vendor rows are skipped instead of being flattened into false two-column facts
 - unmarked wrapped labels and arbitrary missing table cells remain unsupported instead of being guessed
-- development version advanced to `0.2.1.dev0`
 - `psig`, `psia`, `kW`/`kVA` and frequency/rotational-speed relationships remain deliberately non-equivalent without project context
 
 ## 0.2.0 — 2026-08-19
