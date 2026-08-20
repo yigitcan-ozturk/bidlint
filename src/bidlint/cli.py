@@ -9,6 +9,7 @@ from .inputs import parse_vendor_input
 from .parse import parse_requirements
 from .portfolio import portfolio_to_html, portfolio_to_markdown, rank_reports, write_portfolio_csv
 from .report import portfolio_to_json, to_html, to_json, to_markdown, write_csv
+from .scorecard import write_supplier_scorecard_signal
 from .terminology import load_alias_file
 
 
@@ -96,6 +97,15 @@ def _parse_cli_vendor(vendor: str, args: argparse.Namespace, *, mixed_rank: bool
     )
 
 
+def _validate_scorecard_options(args: argparse.Namespace) -> None:
+    output = getattr(args, "scorecard_output", None)
+    supplier = getattr(args, "supplier_name", None)
+    if bool(output) != bool(supplier):
+        raise SystemExit("--scorecard-output and --supplier-name must be supplied together")
+    if output and Path(output).suffix.lower() != ".json":
+        raise SystemExit("--scorecard-output must end in .json")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bidlint",
@@ -113,6 +123,15 @@ def build_parser() -> argparse.ArgumentParser:
     compare_cmd.add_argument("--markdown", action="store_true", help="print Markdown report")
     compare_cmd.add_argument("--html", action="store_true", help="print self-contained HTML report")
     compare_cmd.add_argument("--output", help="write report to .json, .md, .html or .csv")
+    compare_cmd.add_argument(
+        "--scorecard-output",
+        metavar="FILE.json",
+        help="write a supplier-scorecard technical-compliance fragment",
+    )
+    compare_cmd.add_argument(
+        "--supplier-name",
+        help="supplier name used in --scorecard-output",
+    )
 
     rank_cmd = sub.add_parser("rank", help="compare multiple vendor PDF/IFC inputs against one specification")
     rank_cmd.add_argument("specification")
@@ -195,6 +214,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"... {remaining} more vendor(s); exports remain complete.")
         return 0
 
+    _validate_scorecard_options(args)
     try:
         facts = _parse_cli_vendor(args.vendor, args)
     except (OSError, RuntimeError, ValueError) as exc:
@@ -210,6 +230,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.output:
         _write_report(report, args.output)
+    if args.scorecard_output:
+        try:
+            write_supplier_scorecard_signal(report, args.supplier_name, args.scorecard_output)
+        except (OSError, ValueError) as exc:
+            raise SystemExit(f"unable to write supplier-scorecard signal: {exc}") from exc
 
     if args.json:
         print(to_json(report))
