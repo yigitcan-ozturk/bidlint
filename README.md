@@ -13,13 +13,13 @@
 
 It turns document evidence into explicit `PASS / DEVIATION / MISSING / REVIEW` findings, keeps source-page provenance, performs deterministic engineering comparisons where possible, and refuses to fabricate certainty where it cannot.
 
-> Latest stable release: **v0.2.0**
+> Latest stable release: **v0.2.1**
 
 ```text
 Specification PDF ──> requirements ──┐
                                      ├──> terminology + unit-aware rules ──> findings
 Vendor submittal ────> offered facts ┘                              │
-                                                                    ├──> JSON / CSV / HTML
+                                                                    ├──> JSON / CSV / Markdown / HTML
 Multiple vendors ────────────────────────────────────────────────────└──> technical bid tabulation
 ```
 
@@ -81,12 +81,21 @@ bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf \
   --output technical-tabulation.html
 ```
 
+Export the same review matrix as Markdown:
+
+```bash
+bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf \
+  --output technical-tabulation.md
+```
+
 Or export a long-form audit CSV that can be filtered, pivoted or imported into procurement workflows:
 
 ```bash
 bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf \
   --output technical-tabulation.csv
 ```
+
+For large vendor sets, `--top N` limits terminal display without truncating exported data.
 
 See [`docs/BATCH_COMPARISON.md`](docs/BATCH_COMPARISON.md).
 
@@ -103,7 +112,7 @@ Vendor       : Motor power: 10000 W
 PASS — Offered 10000w (= 10kw) satisfies >= 10kw.
 ```
 
-Current deterministic families include power, pressure, length and flow. Missing, unknown or dimensionally incompatible units remain `REVIEW`.
+Deterministic families include real power, voltage, current, frequency, apparent power, pressure, length, mass, force, flow and explicit temperature units. Missing, unknown or dimensionally incompatible units remain `REVIEW`.
 
 See [`docs/ENGINEERING_UNITS.md`](docs/ENGINEERING_UNITS.md).
 
@@ -129,6 +138,8 @@ Motor power
 Housing material:
 316L stainless steel
 ```
+
+Layout-preserved tables with explicit headers, side-by-side numeric fields, final offered values wrapped to the next numeric line, and explicitly hyphenated parameter continuations are also supported conservatively.
 
 Descriptive material grades such as `316L stainless steel` stay qualitative; they are not silently converted into a numeric value of `316`.
 
@@ -189,10 +200,11 @@ bidlint compare specification.pdf vendor.pdf --output compliance.html
 ```bash
 bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf --output ranking.json
 bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf --output ranking.csv
+bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf --output ranking.md
 bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf --output ranking.html
 ```
 
-JSON is the machine-readable integration contract. CSV is optimized for tabular workflows. HTML is self-contained and designed for human review.
+JSON is the machine-readable integration contract. CSV is optimized for tabular workflows. Markdown is convenient for code/design review. HTML is self-contained and designed for human review.
 
 ## Quick start
 
@@ -270,15 +282,15 @@ Detailed references:
 The limits are explicit by design:
 
 - scanned/image-only PDFs require OCR before processing
-- arbitrary PDF table-cell reconstruction is not yet implemented
-- complex visual multi-column layouts may need preprocessing
+- arbitrary merged-cell reconstruction is not implemented
+- sparse or ambiguous multi-column layouts may still need preprocessing
 - only documented engineering unit families are converted automatically
 - qualitative requirements remain `REVIEW` without an explicit deterministic rule
 - terminology aliases are conservative unless the user provides a project-specific mapping
 
 ## Roadmap
 
-See [`ROADMAP.md`](ROADMAP.md). v0.2.0 establishes the real-world deterministic engineering workflow; v0.2.x will focus on document coverage and hardening before the optional AI extraction milestone.
+See [`ROADMAP.md`](ROADMAP.md). v0.2.1 hardens realistic vendor PDF layouts, engineering units, sanitized fixtures and batch review exports. v0.2.2 is reserved for coordinate-aware sparse/merged-cell reconstruction before the optional AI extraction milestone.
 
 Later milestones include optional AI-assisted structured extraction, MCP, IFC property inputs and a direct technical-compliance contract for `supplier-scorecard`.
 
