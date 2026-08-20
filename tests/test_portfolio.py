@@ -2,9 +2,10 @@ import csv
 
 import pytest
 
+from bidlint.cli import _write_portfolio, build_parser
 from bidlint.compare import compare
 from bidlint.models import Requirement, SourceRef, VendorFact
-from bidlint.portfolio import portfolio_to_html, rank_reports, write_portfolio_csv
+from bidlint.portfolio import portfolio_to_html, portfolio_to_markdown, rank_reports, write_portfolio_csv
 
 
 def req(identifier, parameter, operator, value, unit=None):
@@ -62,6 +63,26 @@ def test_portfolio_html_contains_ranking_and_requirement_matrix():
     assert "DEVIATION" in rendered
 
 
+def test_portfolio_markdown_contains_ranking_matrix_and_reasons():
+    vendor_a, vendor_b = portfolio_reports()
+    rendered = portfolio_to_markdown([vendor_b, vendor_a])
+    assert "# bidlint technical bid tabulation" in rendered
+    assert "## Vendor ranking" in rendered
+    assert "## Requirement-by-vendor matrix" in rendered
+    assert rendered.index("vendor-a.pdf") < rendered.index("vendor-b.pdf")
+    assert "**DEVIATION**" in rendered
+    assert "does not satisfy" in rendered
+
+
+def test_portfolio_markdown_output_suffix_is_supported(tmp_path):
+    vendor_a, vendor_b = portfolio_reports()
+    output = tmp_path / "ranking.md"
+    _write_portfolio([vendor_b, vendor_a], str(output))
+    rendered = output.read_text(encoding="utf-8")
+    assert "Technical bid" in rendered or "technical bid" in rendered
+    assert "vendor-a.pdf" in rendered
+
+
 def test_portfolio_csv_is_long_form_and_ranked(tmp_path):
     vendor_a, vendor_b = portfolio_reports()
     output = tmp_path / "ranking.csv"
@@ -77,8 +98,19 @@ def test_portfolio_csv_is_long_form_and_ranked(tmp_path):
     assert any(row["vendor"] == "vendor-b.pdf" and row["status"] == "DEVIATION" for row in rows)
 
 
+def test_rank_cli_accepts_positive_top_n_and_rejects_zero():
+    parser = build_parser()
+    args = parser.parse_args(["rank", "spec.pdf", "a.pdf", "b.pdf", "--top", "1"])
+    assert args.top == 1
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["rank", "spec.pdf", "a.pdf", "b.pdf", "--top", "0"])
+
+
 def test_portfolio_exports_reject_empty_report_sets(tmp_path):
     with pytest.raises(ValueError, match="at least one"):
         portfolio_to_html([])
+    with pytest.raises(ValueError, match="at least one"):
+        portfolio_to_markdown([])
     with pytest.raises(ValueError, match="at least one"):
         write_portfolio_csv([], tmp_path / "empty.csv")
