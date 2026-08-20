@@ -98,7 +98,8 @@ Initial deterministic compliance engine.
 
 - page-preserving PDF extraction
 - normative requirement detection
-- vendor fact extraction
+- numeric comparator parsing
+- vendor key/value extraction
 - deterministic parameter matching
 - PASS / DEVIATION / MISSING / REVIEW findings
 - JSON, Markdown, CSV and self-contained HTML output
