@@ -55,6 +55,30 @@ Design pressure    bar         >= 10           10
 
 Recognized parameter headers include `Parameter`, `Property`, `Description`, `Technical Parameter`, and `Item`. Recognized value headers include `Offered`, `Offered Value`, `Vendor Value`, `Supplier Value`, and `Value`.
 
+### Explicit wrapped offered value
+
+If the offered/value column is the final table column, a row may be completed from the immediately following line only when that line contains one fully numeric value with an optional unit.
+
+```text
+Parameter          Unit        Required        Offered
+Motor power        kW          >= 10
+                                             11
+```
+
+This rule does not fill arbitrary missing cells. It applies only when every preceding header cell is present and the missing cell is specifically the final offered-value column.
+
+### Explicitly hyphenated wrapped parameter
+
+A parameter label may continue onto the immediately following line when the first fragment ends with an explicit hyphen.
+
+```text
+Parameter          Unit        Offered
+Maximum allow-     bar         10
+able working pressure
+```
+
+The reconstructed parameter is `Maximum allowable working pressure`. A plain single-cell line without the trailing hyphen marker is **not** guessed to be a continuation.
+
 ### Two side-by-side numeric fields
 
 Some datasheets render two independent fields on the same visual row.
@@ -90,10 +114,13 @@ A visually separated row with three or more columns is not flattened into a two-
 
 Table state is also dropped when a row no longer matches the active schema. Common `Note` / `Notes` / `Remark` rows terminate the table instead of becoming vendor parameters.
 
+Wrapped-cell handling follows the same evidence rule: a numeric continuation must complete the final offered column, and a label continuation must carry an explicit trailing hyphen. Ordinary headings or free text are never merged merely because they are adjacent.
+
 ## Deliberate limits
 
-- merged cells are not reconstructed
-- wrapped table cells may still need preprocessing
+- arbitrary merged cells are not reconstructed
+- unmarked wrapped labels are not guessed
+- wrapped qualitative offered values are not inferred
 - arbitrary tables without recognizable headers are not guessed
 - side-by-side qualitative pairs are not inferred
 - plain-text label/value pairing without structural or numeric evidence is intentionally conservative
