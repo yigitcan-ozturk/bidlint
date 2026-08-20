@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- provider-neutral `StructuredExtractor` protocol for optional AI or external structured extraction
+- explicit requirement and vendor-fact candidate contracts with provider confidence and source evidence
+- page-local evidence validation before provider candidates can enter deterministic core models
+- rejection reporting for low-confidence, invalid-provenance, wrong-kind and structurally inconsistent candidates
+- `extract_with_provider()` integration helper with provider identity and requested-kind validation
+- optional extraction architecture documentation without adding an AI SDK or network dependency
+
+### Changed
+
+- development version advanced to `0.3.0.dev0`
+- provider confidence is treated only as extraction confidence; deterministic parameter matching and compliance evaluation remain authoritative
+
 ## 0.2.2 — 2026-08-20
 
 ### Added

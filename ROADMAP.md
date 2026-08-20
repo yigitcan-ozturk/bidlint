@@ -30,9 +30,9 @@
 - [x] repeated explicit side-by-side header groups without positional guessing
 
 ## v0.3 — optional AI extraction
-- provider-neutral structured extraction interface
-- confidence and provenance validation
-- no AI dependency in deterministic evaluation
+- [x] provider-neutral structured extraction interface
+- [x] confidence and provenance validation
+- [x] no AI dependency in deterministic evaluation
 
 ## v0.4 — MCP
 - MCP server exposing extract / compare / explain tools
