@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -6,6 +7,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
 import bidlint.ifc as ifc_module
+from bidlint.cli import main
 from bidlint.compare import compare
 from bidlint.ifc import parse_ifc_facts
 from bidlint.inputs import parse_vendor_input
@@ -133,6 +135,25 @@ def test_ifc_guid_and_pset_scope_are_explicit(tmp_path, monkeypatch):
         parse_ifc_facts(path, global_id=pump.GlobalId, pset="Pset_Missing")
 
 
+def test_ifc_class_scope_rejects_multiple_vendor_elements(tmp_path, monkeypatch):
+    path = tmp_path / "pumps.ifc"
+    path.write_text("ISO-10303-21;", encoding="utf-8")
+    pump_a = FakeEntity("IfcPump", "1PumpGuid0000000000000", "Pump A")
+    pump_b = FakeEntity("IfcPump", "2PumpGuid0000000000000", "Pump B")
+    model = FakeModel([pump_a, pump_b])
+    install_fake_ifc(
+        monkeypatch,
+        model,
+        {
+            pump_a.GlobalId: {"Pset_PumpCommon": {"MotorPower": "11 kW"}},
+            pump_b.GlobalId: {"Pset_PumpCommon": {"MotorPower": "15 kW"}},
+        },
+    )
+
+    with pytest.raises(ValueError, match="matched 2 elements; use --ifc-guid"):
+        parse_ifc_facts(path, ifc_class="IfcPump")
+
+
 def test_ifc_fact_flows_through_unchanged_deterministic_compare(tmp_path, monkeypatch):
     path = tmp_path / "pump.ifc"
     path.write_text("ISO-10303-21;", encoding="utf-8")
@@ -156,6 +177,27 @@ def test_ifc_fact_flows_through_unchanged_deterministic_compare(tmp_path, monkey
     report = compare([requirement], facts, "spec.pdf", path.name)
     assert report.findings[0].status == Status.PASS
     assert report.compliance_score == 100.0
+
+
+def test_cli_compares_specification_pdf_with_scoped_ifc_vendor(tmp_path, monkeypatch, capsys):
+    specification = tmp_path / "spec.pdf"
+    vendor = tmp_path / "pump.ifc"
+    make_pdf(specification, ["Motor power shall be minimum 10 kW"])
+    vendor.write_text("ISO-10303-21;", encoding="utf-8")
+    pump = FakeEntity("IfcPump", "1PumpGuid0000000000000", "Pump")
+    model = FakeModel([pump])
+    install_fake_ifc(
+        monkeypatch,
+        model,
+        {pump.GlobalId: {"Pset_PumpCommon": {"MotorPower": "11 kW"}}},
+    )
+
+    exit_code = main(["compare", str(specification), str(vendor), "--ifc-guid", pump.GlobalId, "--json"])
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["vendor"] == "pump.ifc"
+    assert payload["compliance_score"] == 100.0
+    assert payload["findings"][0]["status"] == "PASS"
 
 
 def test_vendor_input_dispatch_rejects_ifc_options_for_pdf(tmp_path):
