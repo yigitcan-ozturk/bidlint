@@ -13,7 +13,7 @@
 
 It turns document evidence into explicit `PASS / DEVIATION / MISSING / REVIEW` findings, keeps source-page provenance, performs deterministic engineering comparisons where possible, and refuses to fabricate certainty where it cannot.
 
-> Latest stable release: **v0.2.2**
+> Latest stable release: **v0.3.0**
 
 ```text
 Specification PDF ──> requirements ──┐
@@ -145,6 +145,16 @@ Descriptive material grades such as `316L stainless steel` stay qualitative; the
 
 See [`docs/VENDOR_PARSING.md`](docs/VENDOR_PARSING.md).
 
+### Optional structured extraction
+
+`v0.3.0` adds a provider-neutral `StructuredExtractor` boundary for optional AI-assisted or external extraction. The base package still has no AI SDK, API-key or network dependency.
+
+Provider candidates must carry confidence and page-local evidence. `bidlint` verifies that the declared page exists and that the evidence snippet actually occurs on that page before converting the candidate into a core `Requirement` or `VendorFact`.
+
+Provider confidence is **extraction confidence only**. Providers cannot emit `PASS`, `DEVIATION`, `MISSING` or `REVIEW`; the existing deterministic matcher, unit converter and evaluator remain authoritative.
+
+See [`docs/AI_EXTRACTION.md`](docs/AI_EXTRACTION.md).
+
 ### Engineering terminology
 
 Built-in terminology aliases normalize a deliberately small set of low-risk nomenclature variants:
@@ -244,27 +254,28 @@ bidlint extract vendor.pdf --kind vendor
 
 **Explicit uncertainty.** Unsupported or ambiguous comparisons remain `REVIEW`.
 
-**Provider-independent core.** Future AI-assisted extraction is an adapter to the deterministic model, not the authority that decides compliance.
+**Provider-independent core.** Optional AI-assisted extraction is a replaceable adapter to the deterministic model, not the authority that decides compliance.
 
 **Engineering first.** The project is designed around specification/submittal workflows rather than generic document chat.
 
 ## Architecture
 
 ```text
-PDF extraction
-    │
-    ├── specification ──> requirement parser ─────────────┐
-    │                                                     │
-    └── vendor ────────> structured fact parser ──────┐   │
-                                                       ▼   ▼
-                                               terminology matcher
-                                                       │
-                                                       ▼
-                                               unit-aware evaluator
-                                                       │
-                                ┌──────────────────────┼───────────────────┐
-                                ▼                      ▼                   ▼
-                           single report          vendor ranking      audit exports
+PDF extraction ───────────────────────────────┐
+                                             │
+optional provider ──> evidence validator ────┤
+                                             ▼
+                                Requirement / VendorFact
+                                             │
+                                             ▼
+                                  terminology matcher
+                                             │
+                                             ▼
+                                   unit-aware evaluator
+                                             │
+                      ┌──────────────────────┼───────────────────┐
+                      ▼                      ▼                   ▼
+                 single report          vendor ranking      audit exports
 ```
 
 Detailed references:
@@ -274,6 +285,7 @@ Detailed references:
 - [`Data contract`](docs/DATA_CONTRACT.md)
 - [`Engineering units`](docs/ENGINEERING_UNITS.md)
 - [`Vendor parsing`](docs/VENDOR_PARSING.md)
+- [`Optional structured extraction`](docs/AI_EXTRACTION.md)
 - [`Terminology`](docs/TERMINOLOGY.md)
 - [`Batch comparison`](docs/BATCH_COMPARISON.md)
 
@@ -287,12 +299,14 @@ The limits are explicit by design:
 - only documented engineering unit families are converted automatically
 - qualitative requirements remain `REVIEW` without an explicit deterministic rule
 - terminology aliases are conservative unless the user provides a project-specific mapping
+- no optional AI/model provider implementation is bundled in the core package
+- provider evidence validation proves page-local text presence, not semantic correctness
 
 ## Roadmap
 
-See [`ROADMAP.md`](ROADMAP.md). v0.2.2 completes the current deterministic PDF-layout hardening milestone with sparse-row coordinates, explicit merged-cell rectangles and repeated side-by-side header groups. The next milestone is optional AI-assisted structured extraction while keeping deterministic evaluation authoritative.
+See [`ROADMAP.md`](ROADMAP.md). v0.3.0 establishes the optional provider-neutral structured extraction boundary with confidence and provenance validation while keeping deterministic evaluation authoritative. The next milestone is an MCP server exposing the existing extraction, comparison and explanation capabilities.
 
-Later milestones include MCP, IFC property inputs and a direct technical-compliance contract for `supplier-scorecard`.
+Later milestones include IFC property inputs and a direct technical-compliance contract for `supplier-scorecard`.
 
 ## Procurement / engineering tooling
 
@@ -320,9 +334,9 @@ GitHub Actions targets Python 3.11, 3.12 and 3.13 and can also be started manual
 
 ## Security and confidential documents
 
-Technical documents may contain confidential project, vendor or commercial information. The deterministic core runs locally and does not transmit documents to an external AI API.
+Technical documents may contain confidential project, vendor or commercial information. The deterministic core runs locally and does not transmit documents to an external AI API. Optional provider integrations are responsible for their own data-handling and network policies.
 
-See [`SECURITY.md`](SECURITY.md) before exposing document processing as a network service.
+See [`SECURITY.md`](SECURITY.md) before exposing document processing as a network service or connecting external extraction providers.
 
 ## Contributing
 
