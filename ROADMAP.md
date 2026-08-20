@@ -35,7 +35,7 @@
 - [x] no AI dependency in deterministic evaluation
 
 ## v0.4 — MCP
-- MCP server exposing extract / compare / explain tools
+- [x] MCP server exposing extract / compare / explain tools
 - support for long-running document jobs
 
 ## v0.5 — engineering ecosystem

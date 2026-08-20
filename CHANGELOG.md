@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- optional MCP v2 integration through a separate `mcp` package extra
+- local stdio MCP server exposing deterministic `extract`, `compare` and `explain` tools
+- `bidlint-mcp` console entrypoint
+- `BIDLINT_MCP_ROOT` filesystem sandbox for MCP document and alias access
+- regression coverage for MCP tool outputs, path traversal, symlink escapes and argument validation
+- MCP server reference documentation
+
+### Changed
+
+- development version advanced to `0.4.0.dev0`
+- MCP remains an optional integration; the base bidlint install keeps no MCP SDK dependency
+
 ## 0.3.0 — 2026-08-20
 
 ### Added
