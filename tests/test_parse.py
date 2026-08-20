@@ -199,6 +199,52 @@ def test_layout_table_does_not_guess_unmarked_label_continuation(tmp_path):
     assert [(fact.parameter, fact.raw_value) for fact in facts] == [("maximum allowable", "10 bar")]
 
 
+def test_coordinate_sparse_table_recovers_blank_intermediate_cell_and_keeps_state(tmp_path):
+    path = tmp_path / "sparse-required.pdf"
+    make_sparse_positioned_pdf(
+        path,
+        [
+            [(50, "Parameter"), (250, "Unit"), (330, "Required"), (430, "Offered")],
+            [(50, "Motor power"), (250, "kW"), (430, "11")],
+            [(50, "Design pressure"), (250, "bar"), (330, ">= 10"), (430, "10")],
+        ],
+    )
+    facts = parse_vendor_facts(path)
+    assert [(fact.parameter, fact.raw_value) for fact in facts] == [
+        ("motor power", "11 kW"),
+        ("design pressure", "10 bar"),
+    ]
+
+
+def test_coordinate_sparse_table_can_leave_unit_blank_without_inventing_one(tmp_path):
+    path = tmp_path / "sparse-unit.pdf"
+    make_sparse_positioned_pdf(
+        path,
+        [
+            [(50, "Parameter"), (250, "Unit"), (330, "Required"), (430, "Offered")],
+            [(50, "IP rating"), (330, ">= 65"), (430, "66")],
+        ],
+    )
+    facts = parse_vendor_facts(path)
+    assert len(facts) == 1
+    assert facts[0].parameter == "ip rating"
+    assert facts[0].raw_value == "66"
+    assert facts[0].value == 66
+    assert facts[0].unit is None
+
+
+def test_coordinate_sparse_table_rejects_fragment_near_column_boundary(tmp_path):
+    path = tmp_path / "ambiguous-coordinate.pdf"
+    make_sparse_positioned_pdf(
+        path,
+        [
+            [(50, "Parameter"), (250, "Unit"), (330, "Required"), (430, "Offered")],
+            [(50, "Motor power"), (250, "kW"), (380, "11")],
+        ],
+    )
+    assert parse_vendor_facts(path) == []
+
+
 def test_side_by_side_layout_pairs(tmp_path):
     path = tmp_path / "paired-layout.pdf"
     make_positioned_pdf(
