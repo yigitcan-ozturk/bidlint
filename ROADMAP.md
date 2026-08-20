@@ -40,5 +40,5 @@
 
 ## v0.5 — engineering ecosystem
 - [x] IFC property inputs
-- supplier-scorecard technical-compliance export contract
+- [x] supplier-scorecard technical-compliance export contract
 - technical bid tabulation workbook export
