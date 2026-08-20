@@ -9,17 +9,17 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-`bidlint` is an open-source technical bid compliance engine for comparing engineering specifications with vendor datasheets, bids and submittals.
+`bidlint` is an open-source technical bid compliance engine for comparing engineering specifications with vendor datasheets, bids, submittals and explicitly scoped IFC property inputs.
 
-It turns document evidence into explicit `PASS / DEVIATION / MISSING / REVIEW` findings, keeps source-page provenance, performs deterministic engineering comparisons where possible, and refuses to fabricate certainty where it cannot.
+It turns document evidence into explicit `PASS / DEVIATION / MISSING / REVIEW` findings, keeps source provenance, performs deterministic engineering comparisons where possible, and refuses to fabricate certainty where it cannot.
 
-> Latest stable release: **v0.4.0**
+> Latest stable release: **v0.5.0**
 
 ```text
 Specification PDF ──> requirements ──┐
                                      ├──> terminology + unit-aware rules ──> findings
-Vendor submittal ────> offered facts ┘                              │
-                                                                    ├──> JSON / CSV / Markdown / HTML
+Vendor PDF / IFC ────> offered facts ┘                              │
+                                                                    ├──> JSON / CSV / Markdown / HTML / XLSX
 Multiple vendors ────────────────────────────────────────────────────└──> technical bid tabulation
 ```
 
@@ -88,16 +88,23 @@ bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf \
   --output technical-tabulation.md
 ```
 
-Or export a long-form audit CSV that can be filtered, pivoted or imported into procurement workflows:
+Export a long-form audit CSV:
 
 ```bash
 bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf \
   --output technical-tabulation.csv
 ```
 
+Or create a formula-free Excel workbook with `Ranking`, `Matrix` and `Audit` sheets:
+
+```bash
+bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf \
+  --output technical-tabulation.xlsx
+```
+
 For large vendor sets, `--top N` limits terminal display without truncating exported data.
 
-See [`docs/BATCH_COMPARISON.md`](docs/BATCH_COMPARISON.md).
+See [`docs/BATCH_COMPARISON.md`](docs/BATCH_COMPARISON.md) and [`docs/WORKBOOK_EXPORT.md`](docs/WORKBOOK_EXPORT.md).
 
 ## Engineering-safe comparison
 
@@ -145,6 +152,31 @@ Descriptive material grades such as `316L stainless steel` stay qualitative; the
 
 See [`docs/VENDOR_PARSING.md`](docs/VENDOR_PARSING.md).
 
+### IFC vendor inputs
+
+`v0.5.0` can read explicitly scoped IFC property sets as vendor evidence through optional IfcOpenShell support:
+
+```bash
+pip install -e '.[ifc]'
+
+bidlint compare specification.pdf equipment.ifc \
+  --ifc-guid 1AbCdEfGhIjKlMnOpQrStu
+```
+
+You can also scope by IFC class when exactly one matching element exists, and optionally restrict extraction to one property set:
+
+```bash
+bidlint extract equipment.ifc --kind vendor \
+  --ifc-class IfcPump \
+  --ifc-pset Pset_PumpCommon
+```
+
+IFC property names such as `MotorPower` are normalized into ordinary vendor parameters such as `motor power` and then pass through the same deterministic matcher and evaluator used for PDF facts.
+
+Ambiguous class selections are rejected rather than merging multiple IFC elements. Scalar numeric IFC properties remain unitless unless their source value explicitly contains a unit string.
+
+See [`docs/IFC.md`](docs/IFC.md).
+
 ### Optional structured extraction
 
 `v0.3.0` added a provider-neutral `StructuredExtractor` boundary for optional AI-assisted or external extraction. The base package still has no AI SDK, API-key or network dependency.
@@ -165,13 +197,27 @@ export BIDLINT_MCP_ROOT=/path/to/project/documents
 bidlint-mcp
 ```
 
-The initial server uses stdio and exposes synchronous `extract`, `compare` and `explain` tools. Large document work can use pollable local jobs through `submit_extract`, `submit_compare`, `job_status`, `job_result` and `cancel_job`.
+The server uses stdio and exposes synchronous `extract`, `compare` and `explain` tools. Large document work can use pollable local jobs through `submit_extract`, `submit_compare`, `job_status`, `job_result` and `cancel_job`.
 
 All document and alias paths stay inside `BIDLINT_MCP_ROOT`; parent traversal and symlink escapes are rejected. Job records and terminal results are persisted under `.bidlint/jobs`, while interrupted queued/running jobs are explicitly failed after a server restart instead of silently resumed.
 
 MCP clients still do not decide compliance. Both synchronous tools and queued jobs execute the same deterministic parsers, terminology matcher, unit conversion and evaluator used by the CLI.
 
 See [`docs/MCP.md`](docs/MCP.md).
+
+### supplier-scorecard technical hand-off
+
+`v0.5.0` adds a versioned JSON hand-off for the companion `supplier-scorecard` project:
+
+```bash
+bidlint compare specification.pdf vendor-a.pdf \
+  --supplier-name "Supplier A" \
+  --scorecard-output supplier-a-technical.json
+```
+
+A numeric 0–100 `technical_compliance` signal is emitted only when no finding remains `REVIEW`. If review is still required, the integration output carries `technical_compliance: null` and an explicit `REVIEW_REQUIRED` status so unresolved engineering evidence does not silently influence procurement ranking.
+
+See [`docs/SUPPLIER_SCORECARD.md`](docs/SUPPLIER_SCORECARD.md).
 
 ### Engineering terminology
 
@@ -230,16 +276,18 @@ bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf --output ranking.json
 bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf --output ranking.csv
 bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf --output ranking.md
 bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf --output ranking.html
+bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf --output ranking.xlsx
 ```
 
-JSON is the machine-readable integration contract. CSV is optimized for tabular workflows. Markdown is convenient for code/design review. HTML is self-contained and designed for human review.
+JSON is the machine-readable integration contract. CSV is optimized for tabular workflows. Markdown is convenient for code/design review. HTML is self-contained for browser review. XLSX provides a spreadsheet-native ranking, matrix and long-form audit without formulas or macros.
 
 ## Quick start
 
 Requirements:
 
 - Python 3.11+
-- text-based PDFs
+- text-based PDFs for PDF extraction
+- optional IfcOpenShell only when IFC vendor inputs are required
 
 Install from source:
 
@@ -266,37 +314,36 @@ bidlint extract vendor.pdf --kind vendor
 
 ## Design principles
 
-**Evidence before confidence.** Every result should remain traceable to its source document.
+**Evidence before confidence.** Every result should remain traceable to its source document or selected IFC element.
 
 **Deterministic where possible.** Numeric limits, unit conversions and explicit terminology mappings belong in code, not model opinion.
 
 **Explicit uncertainty.** Unsupported or ambiguous comparisons remain `REVIEW`.
 
-**Provider-independent core.** Optional AI-assisted extraction and MCP are adapters to the deterministic model, not authorities that decide compliance.
+**Provider-independent core.** Optional AI-assisted extraction, MCP and ecosystem adapters are boundaries around the deterministic model, not authorities that decide compliance.
 
 **Engineering first.** The project is designed around specification/submittal workflows rather than generic document chat.
 
 ## Architecture
 
 ```text
-PDF extraction ───────────────────────────────┐
-                                             │
-optional provider ──> evidence validator ────┤
-                                             ▼
-                                Requirement / VendorFact
-                                             │
-                                             ▼
-                                  terminology matcher
-                                             │
-                                             ▼
-                                   unit-aware evaluator
-                                             │
-                      ┌──────────────────────┼───────────────────┐
-                      ▼                      ▼                   ▼
-                 single report          vendor ranking      audit exports
-                      ▲
-                      │
-             MCP tools / local jobs
+Specification PDF ──> requirement parser ─────────────────────┐
+                                                              │
+Vendor PDF ────────> vendor parser ────────────────────────────┤
+IFC element ───────> property adapter ──> VendorFact ──────────┤
+optional provider ─> evidence validator ───────────────────────┤
+                                                              ▼
+                                                   terminology matcher
+                                                              │
+                                                              ▼
+                                                    unit-aware evaluator
+                                                              │
+                           ┌──────────────────────────────────┼──────────────────────────────┐
+                           ▼                                  ▼                              ▼
+                      single report                     vendor ranking              ecosystem exports
+                           ▲                                  │                       JSON / XLSX /
+                           │                                  ▼                       supplier-scorecard
+                  MCP tools / local jobs                 audit exports
 ```
 
 Detailed references:
@@ -306,30 +353,38 @@ Detailed references:
 - [`Data contract`](docs/DATA_CONTRACT.md)
 - [`Engineering units`](docs/ENGINEERING_UNITS.md)
 - [`Vendor parsing`](docs/VENDOR_PARSING.md)
+- [`IFC inputs`](docs/IFC.md)
 - [`Optional structured extraction`](docs/AI_EXTRACTION.md)
 - [`MCP server`](docs/MCP.md)
+- [`supplier-scorecard contract`](docs/SUPPLIER_SCORECARD.md)
 - [`Terminology`](docs/TERMINOLOGY.md)
 - [`Batch comparison`](docs/BATCH_COMPARISON.md)
+- [`Workbook export`](docs/WORKBOOK_EXPORT.md)
 
 ## Current limits
 
 The limits are explicit by design:
 
 - scanned/image-only PDFs require OCR before processing
-- merged cells without explicit supported rectangle geometry are not reconstructed
+- merged PDF cells without explicit supported rectangle geometry are not reconstructed
 - arbitrary line-grid tables and ambiguous multi-column layouts without explicit repeated headers may need preprocessing
 - only documented engineering unit families are converted automatically
 - qualitative requirements remain `REVIEW` without an explicit deterministic rule
 - terminology aliases are conservative unless the user provides a project-specific mapping
 - no optional AI/model provider implementation is bundled in the core package
 - provider evidence validation proves page-local text presence, not semantic correctness
-- MCP is optional and the initial server is local/stdin-stdout rather than a remote service
+- IFC input is property-based only; geometry is not evaluated
+- IFC class selection must resolve to one element or callers must provide `--ifc-guid`
+- MCP is optional and local/stdin-stdout rather than a remote service
 - running document jobs are cooperatively cancelled, not force-terminated
 - in-progress local jobs are not resumed after a process restart
+- XLSX output is a presentation/audit export and does not contain hidden compliance formulas
 
 ## Roadmap
 
-See [`ROADMAP.md`](ROADMAP.md). v0.4.0 completes the local MCP milestone with deterministic `extract / compare / explain` tools plus pollable document jobs. The next milestone is v0.5 engineering ecosystem integration: IFC property inputs, a `supplier-scorecard` technical-compliance contract and workbook bid tabulation export.
+See [`ROADMAP.md`](ROADMAP.md). `v0.5.0` completes the published engineering-ecosystem milestone: explicitly scoped IFC property inputs, a safe `supplier-scorecard` technical-compliance hand-off, and spreadsheet-native technical bid tabulation export.
+
+Future work should be deliberately scoped rather than weakening the deterministic evidence-first boundary.
 
 ## Procurement / engineering tooling
 
@@ -359,7 +414,7 @@ GitHub Actions targets Python 3.11, 3.12 and 3.13 and can also be started manual
 
 Technical documents may contain confidential project, vendor or commercial information. The deterministic core runs locally and does not transmit documents to an external AI API. Optional provider integrations are responsible for their own data-handling and network policies.
 
-The MCP server also stays local by default and restricts file access to its configured root. See [`SECURITY.md`](SECURITY.md) before exposing document processing as a network service or connecting external extraction providers.
+The MCP server stays local by default and restricts file access to its configured root. IFC files are read locally through the optional adapter. See [`SECURITY.md`](SECURITY.md) before exposing document processing as a network service or connecting external extraction providers.
 
 ## Contributing
 
