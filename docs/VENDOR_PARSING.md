@@ -69,6 +69,21 @@ For an already recognized table, `bidlint` performs a supplementary positioned-t
 
 This coordinate pass is a fallback, not the primary parser. It does **not** infer a value merely because it is somewhere between two columns. Fragments close to a column boundary are rejected instead of assigned by guesswork. A genuinely blank `Unit` cell also remains blank; no unit is invented from the surrounding table.
 
+### Explicit merged-cell rectangles
+
+Some generated datasheets draw each table cell as an explicit PDF rectangle. If a body row merges intermediate cells, such as `Unit + Required`, whitespace and x-position alone can make the merged text look like it belongs to one semantic column.
+
+`bidlint` can use explicit axis-aligned PDF `re` rectangle geometry as additional evidence, but only under an already recognized table header. A merged rectangle is accepted only when the `Parameter` and `Offered` columns still have their own distinct cell rectangles.
+
+```text
+| Parameter   |      Unit + Required       | Offered |
+| Motor power |         kW / >= 10          |   11    |
+```
+
+In this case the fact can be recovered as `motor power -> 11`, but the merged middle text is **not** assigned to `Unit` or `Required`. The unit therefore remains unknown instead of becoming a fabricated value such as `kW / >= 10`.
+
+If a merged rectangle touches `Parameter` or `Offered`, the row is rejected. Rotated/skewed rectangles are also ignored rather than converted to a misleading axis-aligned box. Arbitrary line drawings are not treated as cells; this feature currently requires explicit rectangle operators.
+
 ### Explicit wrapped offered value
 
 If the offered/value column is the final table column, a row may be completed from the immediately following line only when that line contains one fully numeric value with an optional unit.
@@ -124,7 +139,7 @@ It is **not** interpreted as the numeric value `316`.
 
 ## Multi-column safety
 
-A visually separated row with three or more columns is not flattened into a two-column fact unless it matches a recognized table schema, the explicit side-by-side numeric pattern, or a coordinate-aligned sparse row under an active explicit header.
+A visually separated row with three or more columns is not flattened into a two-column fact unless it matches a recognized table schema, the explicit side-by-side numeric pattern, a coordinate-aligned sparse row, or safe explicit rectangle geometry under an active header.
 
 Table state is also dropped when a row no longer matches the active schema. Common `Note` / `Notes` / `Remark` rows terminate the table instead of becoming vendor parameters.
 
@@ -132,8 +147,11 @@ Wrapped-cell handling follows the same evidence rule: a numeric continuation mus
 
 ## Deliberate limits
 
-- arbitrary merged cells are not reconstructed yet
-- coordinate evidence is accepted only under an explicit recognized table header
+- merged-cell support currently requires explicit axis-aligned PDF rectangle (`re`) geometry
+- merges touching `Parameter` or `Offered` are rejected
+- content inside merged intermediate cells is not split into semantic sub-values
+- arbitrary line-segment grids are not reconstructed into cells
+- coordinate/geometry evidence is accepted only under an explicit recognized table header
 - fragments too far from a header anchor or too close to a boundary are not assigned by positional guessing
 - unmarked wrapped labels are not guessed
 - wrapped qualitative offered values are not inferred
