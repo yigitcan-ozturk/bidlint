@@ -8,6 +8,8 @@
 - deterministic header-driven parsing for tables with explicit parameter, unit and offered-value columns
 - conservative parsing for two numeric parameter/value pairs rendered side-by-side on one visual row
 - regression coverage for table footers, unrelated multi-column metadata and end-to-end compliance evaluation
+- deterministic reconstruction when a final offered-value cell wraps to the immediately following numeric line
+- deterministic reconstruction for parameter labels split by an explicit trailing hyphen
 - deterministic voltage conversion for `mV`, `V` and `kV`
 - deterministic current conversion for `mA`, `A` and `kA`
 - deterministic frequency conversion for `Hz`, `kHz` and `MHz`
@@ -21,6 +23,7 @@
 ### Changed
 
 - ambiguous unrecognized 3+ column vendor rows are skipped instead of being flattened into false two-column facts
+- unmarked wrapped labels and arbitrary missing table cells remain unsupported instead of being guessed
 - development version advanced to `0.2.1.dev0`
 - `psig`, `psia`, `kW`/`kVA` and frequency/rotational-speed relationships remain deliberately non-equivalent without project context
 
