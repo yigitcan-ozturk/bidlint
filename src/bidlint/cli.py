@@ -100,7 +100,7 @@ def _xlsx_options_supplied(args: argparse.Namespace) -> bool:
     return getattr(args, "xlsx_sheet", None) is not None
 
 
-def _parse_cli_vendor(vendor: str, args: argparse.Namespace, *, mixed_rank: bool = False):
+def _parse_cli_vendor(vendor: str, args: argparse.Namespace, *, mixed_rank: bool = False, aliases=None):
     suffix = Path(vendor).suffix.lower()
     if mixed_rank:
         if suffix == ".pdf":
@@ -120,6 +120,7 @@ def _parse_cli_vendor(vendor: str, args: argparse.Namespace, *, mixed_rank: bool
         ifc_guid=getattr(args, "ifc_guid", None),
         ifc_pset=getattr(args, "ifc_pset", None),
         xlsx_sheet=getattr(args, "xlsx_sheet", None),
+        aliases=aliases,
     )
 
 
@@ -213,7 +214,7 @@ def main(argv: list[str] | None = None) -> int:
         reports = []
         for vendor in args.vendors:
             try:
-                facts = _parse_cli_vendor(vendor, args, mixed_rank=True)
+                facts = _parse_cli_vendor(vendor, args, mixed_rank=True, aliases=aliases)
             except (OSError, RuntimeError, ValueError) as exc:
                 raise SystemExit(f"unable to parse vendor input {vendor}: {exc}") from exc
             reports.append(
@@ -249,7 +250,7 @@ def main(argv: list[str] | None = None) -> int:
 
     _validate_scorecard_options(args)
     try:
-        facts = _parse_cli_vendor(args.vendor, args)
+        facts = _parse_cli_vendor(args.vendor, args, aliases=aliases)
     except (OSError, RuntimeError, ValueError) as exc:
         raise SystemExit(f"unable to parse vendor input {args.vendor}: {exc}") from exc
     report = compare(
