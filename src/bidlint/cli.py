@@ -6,7 +6,7 @@ from pathlib import Path
 from . import __version__
 from .compare import compare
 from .parse import parse_requirements, parse_vendor_facts
-from .portfolio import portfolio_to_html, rank_reports, write_portfolio_csv
+from .portfolio import portfolio_to_html, portfolio_to_markdown, rank_reports, write_portfolio_csv
 from .report import portfolio_to_json, to_html, to_json, to_markdown, write_csv
 from .terminology import load_alias_file
 
@@ -24,6 +24,13 @@ def _summary(report) -> str:
             f"REVIEW     : {c['REVIEW']}",
         ]
     )
+
+
+def _positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("value must be at least 1")
+    return parsed
 
 
 def _write_report(report, output: str) -> None:
@@ -46,12 +53,14 @@ def _write_portfolio(reports, output: str) -> None:
     suffix = path.suffix.lower()
     if suffix == ".json":
         path.write_text(portfolio_to_json(reports), encoding="utf-8")
+    elif suffix in {".md", ".markdown"}:
+        path.write_text(portfolio_to_markdown(reports), encoding="utf-8")
     elif suffix == ".html":
         path.write_text(portfolio_to_html(reports), encoding="utf-8")
     elif suffix == ".csv":
         write_portfolio_csv(reports, path)
     else:
-        raise SystemExit("rank --output must end in .json, .html or .csv")
+        raise SystemExit("rank --output must end in .json, .md, .html or .csv")
 
 
 def _add_matching_options(command: argparse.ArgumentParser) -> None:
@@ -85,7 +94,8 @@ def build_parser() -> argparse.ArgumentParser:
     rank_cmd.add_argument("vendors", nargs="+", help="two or more vendor PDF files")
     _add_matching_options(rank_cmd)
     rank_cmd.add_argument("--json", action="store_true", help="print portfolio JSON")
-    rank_cmd.add_argument("--output", help="write ranking to .json, .html or .csv")
+    rank_cmd.add_argument("--top", type=_positive_int, help="show only the top N vendors in terminal output")
+    rank_cmd.add_argument("--output", help="write ranking to .json, .md, .html or .csv")
 
     extract_cmd = sub.add_parser("extract", help="inspect extracted requirements or vendor facts")
     extract_cmd.add_argument("document")
@@ -131,12 +141,16 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print("BIDLINT — VENDOR RANKING")
             print("=" * 32)
-            for index, report in enumerate(ranked, start=1):
+            shown = ranked[: args.top] if args.top else ranked
+            for index, report in enumerate(shown, start=1):
                 c = report.counts
                 print(
                     f"{index:>2}. {report.vendor:<30} {report.compliance_score:>5.1f}%  "
                     f"PASS {c['PASS']}  DEV {c['DEVIATION']}  MISS {c['MISSING']}  REVIEW {c['REVIEW']}"
                 )
+            if len(shown) < len(ranked):
+                remaining = len(ranked) - len(shown)
+                print(f"... {remaining} more vendor(s); exports remain complete.")
         return 0
 
     facts = parse_vendor_facts(args.vendor)

@@ -22,7 +22,7 @@
 - [ ] arbitrary merged cells and advanced ambiguous multi-column reconstruction
 - [x] broader engineering unit normalization for electrical, pressure, length, mass, force and temperature units
 - [x] additional sanitized real-world datasheet fixtures
-- [ ] batch comparison ergonomics and export refinements
+- [x] batch comparison ergonomics and export refinements
 
 ## v0.3 — optional AI extraction
 - provider-neutral structured extraction interface
