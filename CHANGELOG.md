@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 — 2026-08-20
 
 ### Added
 
@@ -21,7 +21,6 @@
 
 ### Changed
 
-- development version advanced to `0.5.0.dev0`
 - IFC class selection is rejected when it matches multiple elements; callers must use `--ifc-guid` instead of mixing multiple occurrences into one vendor fact set
 - scalar numeric IFC properties remain unitless unless the property value explicitly contains a unit string
 - supplier-scorecard numeric technical compliance is emitted only when no bidlint finding remains `REVIEW`; unresolved review or empty-requirement reports export a null technical signal with an explicit status
