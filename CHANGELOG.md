@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 — 2026-08-20
 
 ### Added
 
@@ -13,7 +13,6 @@
 
 ### Changed
 
-- development version advanced to `0.3.0.dev0`
 - provider confidence is treated only as extraction confidence; deterministic parameter matching and compliance evaluation remain authoritative
 
 ## 0.2.2 — 2026-08-20
@@ -99,8 +98,7 @@ Initial deterministic compliance engine.
 
 - page-preserving PDF extraction
 - normative requirement detection
-- numeric comparator parsing
-- vendor key/value extraction
+- vendor fact extraction
 - deterministic parameter matching
 - PASS / DEVIATION / MISSING / REVIEW findings
 - JSON, Markdown, CSV and self-contained HTML output
