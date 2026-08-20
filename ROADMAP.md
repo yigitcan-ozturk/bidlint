@@ -57,7 +57,7 @@
 - [x] consolidate equivalent duplicate evidence across compatible engineering units
 - [x] turn conflicting package evidence into explicit provenance-preserving `REVIEW` facts instead of choosing a winner
 - [x] directory dispatch through the existing vendor-input boundary without changing the deterministic evaluator
-- [ ] thread project-specific terminology aliases into CLI package consolidation
+- [x] thread project-specific terminology aliases into CLI package consolidation
 - [x] explicit document classification for specification, datasheet, compliance schedule, technical offer and ignored documents
 - [x] explicit evidence-priority policy with user override rather than hidden source precedence
 - [ ] fully scoped mixed-package ranking when IFC/XLSX selectors are required
