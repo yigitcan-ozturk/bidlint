@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 — 2026-08-20
 
 ### Added
 
@@ -18,7 +18,6 @@
 
 ### Changed
 
-- development version advanced to `0.4.0.dev0`
 - MCP remains an optional integration; the base bidlint install keeps no MCP SDK dependency
 - long-running jobs use bidlint lifecycle tools rather than claiming native MCP Tasks-extension support before the Python SDK exposes it
 
