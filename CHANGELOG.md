@@ -11,12 +11,16 @@
 - IFC provenance encoded as `IfcClass:GlobalId/Pset` in the existing source section field
 - regression coverage for scalar property extraction, scope ambiguity, provenance and PDF-to-IFC comparison
 - IFC input reference documentation
+- versioned `supplier-scorecard.technical-compliance` JSON export contract for single-vendor comparisons
+- `--supplier-name` and `--scorecard-output FILE.json` CLI integration for emitting supplier-scorecard technical signals alongside normal reports
+- supplier-scorecard contract regression coverage and integration reference documentation
 
 ### Changed
 
 - development version advanced to `0.5.0.dev0`
 - IFC class selection is rejected when it matches multiple elements; callers must use `--ifc-guid` instead of mixing multiple occurrences into one vendor fact set
 - scalar numeric IFC properties remain unitless unless the property value explicitly contains a unit string
+- supplier-scorecard numeric technical compliance is emitted only when no bidlint finding remains `REVIEW`; unresolved review or empty-requirement reports export a null technical signal with an explicit status
 
 ## 0.4.0 — 2026-08-20
 
