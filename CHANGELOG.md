@@ -14,6 +14,10 @@
 - versioned `supplier-scorecard.technical-compliance` JSON export contract for single-vendor comparisons
 - `--supplier-name` and `--scorecard-output FILE.json` CLI integration for emitting supplier-scorecard technical signals alongside normal reports
 - supplier-scorecard contract regression coverage and integration reference documentation
+- deterministic formula-free `.xlsx` technical bid tabulation with Ranking, Matrix and Audit sheets
+- status-specific workbook styling, frozen review panes, filters and provenance-preserving audit columns
+- workbook package regression coverage for OOXML structure, deterministic bytes and CLI export behavior
+- workbook export reference documentation
 
 ### Changed
 
@@ -21,6 +25,7 @@
 - IFC class selection is rejected when it matches multiple elements; callers must use `--ifc-guid` instead of mixing multiple occurrences into one vendor fact set
 - scalar numeric IFC properties remain unitless unless the property value explicitly contains a unit string
 - supplier-scorecard numeric technical compliance is emitted only when no bidlint finding remains `REVIEW`; unresolved review or empty-requirement reports export a null technical signal with an explicit status
+- `rank --output` now supports `.xlsx` without adding a spreadsheet runtime dependency to the base package
 
 ## 0.4.0 — 2026-08-20
 
