@@ -202,6 +202,7 @@ class JobManager:
             if record["status"] == "queued" and future is not None and future.cancel():
                 record["status"] = "cancelled"
                 record["finished_at"] = _utc_now()
+                self._futures.pop(job_id, None)
             self._write_unlocked(record)
             return self.status(job_id)
 
