@@ -1,6 +1,6 @@
 # Vendor packages
 
-`v0.7.0.dev0` introduces deterministic multi-file vendor intake with explicit document classification and opt-in evidence priority.
+`v0.7.0.dev0` introduces deterministic multi-file vendor intake with explicit document classification, project aliases and opt-in evidence priority.
 
 A vendor package is a directory whose supported direct-child files are treated as one supplier evidence set.
 
@@ -59,6 +59,33 @@ package = parse_vendor_package(
 Unknown filenames, unknown classes and attempts to treat unsupported file types as technical evidence are rejected instead of guessed.
 
 The resolved mapping is available through `VendorPackage.document_classes`. Explicitly ignored files remain visible through `VendorPackage.ignored_documents`.
+
+## Project terminology aliases
+
+Project-specific terminology aliases participate in package consolidation before the normal compliance comparison.
+
+For example:
+
+```json
+{
+  "supplier rated output": "motor power"
+}
+```
+
+With:
+
+```bash
+bidlint compare specification.pdf Supplier-A/ --aliases aliases.json
+```
+
+the same normalized alias mapping is used twice:
+
+1. package evidence is grouped by the aliased canonical parameter before duplicate/conflict consolidation;
+2. the consolidated vendor facts are matched against specification requirements by the existing comparator.
+
+This means `supplier rated output = 11 kW` in one package document and `motor power = 11000 W` in another become equivalent evidence rather than two unrelated facts. If the aliased facts disagree, the existing conflict rules still apply and produce `REVIEW` unless an explicit evidence-priority policy resolves the class-level conflict.
+
+Aliases do not introduce fuzzy grouping, hidden precedence or additional confidence.
 
 ## Duplicate evidence
 
@@ -127,7 +154,6 @@ Current deliberate limits include:
 
 - only direct-child documents are considered
 - document classification uses deterministic filename rules plus exact programmatic overrides; package manifest and CLI override surfaces are not added yet
-- package conflict consolidation uses the built-in terminology registry through normal CLI dispatch; explicit CLI alias threading is still planned
 - mixed package ranking that requires global IFC/XLSX selectors is still being hardened
 - package-level audit output beyond the existing finding provenance is still planned
 
