@@ -6,12 +6,15 @@
 
 - supplementary positioned-text extraction for explicit vendor-table geometry
 - coordinate-aligned recovery for sparse table rows whose intermediate cells are visually blank
-- regression coverage proving blank unit cells stay unitless and near-boundary fragments are rejected rather than guessed
+- explicit axis-aligned PDF rectangle capture for conservatively identifying merged intermediate table cells
+- safe recovery when merged geometry leaves parameter and offered cells as distinct boxes
+- regression coverage proving blank unit cells stay unitless, near-boundary fragments are rejected, and merges touching parameter/offered are not guessed
 
 ### Changed
 
 - development version advanced to `0.2.2.dev0`
-- layout-mode parsing remains the primary path; coordinate evidence is used only as a conservative fallback inside recognized tables
+- layout-mode parsing remains the primary path; coordinate and rectangle evidence are used only as conservative fallbacks inside recognized tables
+- content inside a merged intermediate cell is ignored rather than assigned to a single semantic column
 
 ## 0.2.1 — 2026-08-20
 
