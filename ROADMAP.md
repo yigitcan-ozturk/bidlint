@@ -25,7 +25,7 @@
 - [x] compact `rank --top N` terminal display while preserving complete exports
 
 ## v0.2.2 — advanced layout reconstruction
-- [ ] coordinate-aligned sparse table rows where intermediate cells are visually blank
+- [x] coordinate-aligned sparse table rows where intermediate cells are visually blank
 - [ ] conservative handling for explicit merged-cell geometry
 - [ ] advanced ambiguous multi-column reconstruction without positional guessing
 

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Added
+
+- supplementary positioned-text extraction for explicit vendor-table geometry
+- coordinate-aligned recovery for sparse table rows whose intermediate cells are visually blank
+- regression coverage proving blank unit cells stay unitless and near-boundary fragments are rejected rather than guessed
+
+### Changed
+
+- development version advanced to `0.2.2.dev0`
+- layout-mode parsing remains the primary path; coordinate evidence is used only as a conservative fallback inside recognized tables
+
 ## 0.2.1 — 2026-08-20
 
 ### Added
