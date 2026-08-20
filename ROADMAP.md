@@ -15,14 +15,19 @@
 - [x] batch vendor ranking with HTML matrix and CSV audit exports
 - [x] explicit uncertainty rules for missing, incompatible and ambiguous evidence
 
-## v0.2.x — hardening and document coverage
+## v0.2.1 — document and batch hardening
 - [x] layout-preserved PDF table rows with explicit parameter/value headers
 - [x] side-by-side numeric parameter/value reconstruction for common technical datasheets
 - [x] explicit wrapped offered-value continuations and hyphenated parameter-label continuations
-- [ ] arbitrary merged cells and advanced ambiguous multi-column reconstruction
 - [x] broader engineering unit normalization for electrical, pressure, length, mass, force and temperature units
-- [x] additional sanitized real-world datasheet fixtures
-- [x] batch comparison ergonomics and export refinements
+- [x] sanitized motor, pump and valve datasheet fixtures with page provenance
+- [x] Markdown multi-vendor tabulation export
+- [x] compact `rank --top N` terminal display while preserving complete exports
+
+## v0.2.2 — advanced layout reconstruction
+- [ ] coordinate-aligned sparse table rows where intermediate cells are visually blank
+- [ ] conservative handling for explicit merged-cell geometry
+- [ ] advanced ambiguous multi-column reconstruction without positional guessing
 
 ## v0.3 — optional AI extraction
 - provider-neutral structured extraction interface
