@@ -5,7 +5,8 @@ from pathlib import Path
 
 from . import __version__
 from .compare import compare
-from .parse import parse_requirements, parse_vendor_facts
+from .inputs import parse_vendor_input
+from .parse import parse_requirements
 from .portfolio import portfolio_to_html, portfolio_to_markdown, rank_reports, write_portfolio_csv
 from .report import portfolio_to_json, to_html, to_json, to_markdown, write_csv
 from .terminology import load_alias_file
@@ -72,6 +73,29 @@ def _add_matching_options(command: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_ifc_options(command: argparse.ArgumentParser) -> None:
+    group = command.add_argument_group("IFC vendor selection")
+    group.add_argument("--ifc-class", help="scope .ifc vendor properties to an IFC class, e.g. IfcPump")
+    group.add_argument("--ifc-guid", help="scope .ifc vendor properties to one GlobalId")
+    group.add_argument("--ifc-pset", help="optionally restrict IFC properties to one property-set name")
+
+
+def _ifc_options_supplied(args: argparse.Namespace) -> bool:
+    return any(getattr(args, name, None) is not None for name in ("ifc_class", "ifc_guid", "ifc_pset"))
+
+
+def _parse_cli_vendor(vendor: str, args: argparse.Namespace, *, mixed_rank: bool = False):
+    suffix = Path(vendor).suffix.lower()
+    if mixed_rank and suffix == ".pdf":
+        return parse_vendor_input(vendor)
+    return parse_vendor_input(
+        vendor,
+        ifc_class=getattr(args, "ifc_class", None),
+        ifc_guid=getattr(args, "ifc_guid", None),
+        ifc_pset=getattr(args, "ifc_pset", None),
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bidlint",
@@ -80,19 +104,21 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"bidlint {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    compare_cmd = sub.add_parser("compare", help="compare a specification PDF with one vendor submittal")
+    compare_cmd = sub.add_parser("compare", help="compare a specification PDF with one vendor PDF or IFC input")
     compare_cmd.add_argument("specification")
     compare_cmd.add_argument("vendor")
     _add_matching_options(compare_cmd)
+    _add_ifc_options(compare_cmd)
     compare_cmd.add_argument("--json", action="store_true", help="print machine-readable JSON")
     compare_cmd.add_argument("--markdown", action="store_true", help="print Markdown report")
     compare_cmd.add_argument("--html", action="store_true", help="print self-contained HTML report")
     compare_cmd.add_argument("--output", help="write report to .json, .md, .html or .csv")
 
-    rank_cmd = sub.add_parser("rank", help="compare multiple vendor submittals against one specification")
+    rank_cmd = sub.add_parser("rank", help="compare multiple vendor PDF/IFC inputs against one specification")
     rank_cmd.add_argument("specification")
-    rank_cmd.add_argument("vendors", nargs="+", help="two or more vendor PDF files")
+    rank_cmd.add_argument("vendors", nargs="+", help="two or more vendor PDF/IFC files")
     _add_matching_options(rank_cmd)
+    _add_ifc_options(rank_cmd)
     rank_cmd.add_argument("--json", action="store_true", help="print portfolio JSON")
     rank_cmd.add_argument("--top", type=_positive_int, help="show only the top N vendors in terminal output")
     rank_cmd.add_argument("--output", help="write ranking to .json, .md, .html or .csv")
@@ -100,6 +126,7 @@ def build_parser() -> argparse.ArgumentParser:
     extract_cmd = sub.add_parser("extract", help="inspect extracted requirements or vendor facts")
     extract_cmd.add_argument("document")
     extract_cmd.add_argument("--kind", choices=["specification", "vendor"], required=True)
+    _add_ifc_options(extract_cmd)
     return parser
 
 
@@ -107,7 +134,15 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     if args.command == "extract":
-        items = parse_requirements(args.document) if args.kind == "specification" else parse_vendor_facts(args.document)
+        try:
+            if args.kind == "specification":
+                if _ifc_options_supplied(args):
+                    raise ValueError("IFC selection options require --kind vendor")
+                items = parse_requirements(args.document)
+            else:
+                items = _parse_cli_vendor(args.document, args)
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise SystemExit(f"unable to extract {args.kind}: {exc}") from exc
         for item in items:
             print(item)
         return 0
@@ -120,18 +155,25 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "rank":
         if len(args.vendors) < 2:
-            raise SystemExit("rank requires at least two vendor PDFs")
-        reports = [
-            compare(
-                requirements,
-                parse_vendor_facts(vendor),
-                Path(args.specification).name,
-                Path(vendor).name,
-                threshold=args.threshold,
-                aliases=aliases,
+            raise SystemExit("rank requires at least two vendor inputs")
+        if _ifc_options_supplied(args) and not any(Path(vendor).suffix.lower() == ".ifc" for vendor in args.vendors):
+            raise SystemExit("IFC selection options require at least one .ifc vendor input")
+        reports = []
+        for vendor in args.vendors:
+            try:
+                facts = _parse_cli_vendor(vendor, args, mixed_rank=True)
+            except (OSError, RuntimeError, ValueError) as exc:
+                raise SystemExit(f"unable to parse vendor input {vendor}: {exc}") from exc
+            reports.append(
+                compare(
+                    requirements,
+                    facts,
+                    Path(args.specification).name,
+                    Path(vendor).name,
+                    threshold=args.threshold,
+                    aliases=aliases,
+                )
             )
-            for vendor in args.vendors
-        ]
         ranked = rank_reports(reports)
         payload = portfolio_to_json(reports)
         if args.output:
@@ -153,7 +195,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"... {remaining} more vendor(s); exports remain complete.")
         return 0
 
-    facts = parse_vendor_facts(args.vendor)
+    try:
+        facts = _parse_cli_vendor(args.vendor, args)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise SystemExit(f"unable to parse vendor input {args.vendor}: {exc}") from exc
     report = compare(
         requirements,
         facts,
