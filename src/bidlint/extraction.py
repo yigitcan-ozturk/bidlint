@@ -100,8 +100,8 @@ def _normalize_evidence(text: str) -> str:
     return _WHITESPACE.sub(" ", text).strip().casefold()
 
 
-def _finite_number(value: float | None) -> bool:
-    return value is None or (isinstance(value, (int, float)) and math.isfinite(value))
+def _finite_number(value: object) -> bool:
+    return value is None or (isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value))
 
 
 def _validate_common(
@@ -110,28 +110,35 @@ def _validate_common(
     *,
     min_confidence: float,
 ) -> str | None:
-    if not math.isfinite(candidate.confidence) or not 0.0 <= candidate.confidence <= 1.0:
+    confidence = candidate.confidence
+    if not _finite_number(confidence) or confidence is None or not 0.0 <= confidence <= 1.0:
         return "confidence must be a finite number between 0 and 1"
-    if candidate.confidence < min_confidence:
-        return f"confidence {candidate.confidence:.3f} is below minimum {min_confidence:.3f}"
-    if candidate.evidence.page not in pages:
-        return f"evidence page {candidate.evidence.page} is outside the source document"
-    if candidate.evidence.line is not None and candidate.evidence.line < 1:
-        return "evidence line must be at least 1 when supplied"
+    if confidence < min_confidence:
+        return f"confidence {confidence:.3f} is below minimum {min_confidence:.3f}"
 
-    evidence = _normalize_evidence(candidate.evidence.text)
-    if not evidence:
+    evidence = candidate.evidence
+    if not isinstance(evidence.page, int) or isinstance(evidence.page, bool) or evidence.page < 1:
+        return "evidence page must be a positive integer"
+    if evidence.page not in pages:
+        return f"evidence page {evidence.page} is outside the source document"
+    if evidence.line is not None and (
+        not isinstance(evidence.line, int) or isinstance(evidence.line, bool) or evidence.line < 1
+    ):
+        return "evidence line must be a positive integer when supplied"
+    if not isinstance(evidence.text, str) or not evidence.text.strip():
         return "evidence text is required"
-    page_text = _normalize_evidence(pages[candidate.evidence.page].text)
-    if evidence not in page_text:
+
+    normalized_evidence = _normalize_evidence(evidence.text)
+    page_text = _normalize_evidence(pages[evidence.page].text)
+    if normalized_evidence not in page_text:
         return "evidence text was not found on the declared source page"
     return None
 
 
 def _validate_requirement(candidate: RequirementCandidate) -> str | None:
-    if not candidate.text.strip():
+    if not isinstance(candidate.text, str) or not candidate.text.strip():
         return "requirement text is required"
-    if not candidate.parameter.strip():
+    if not isinstance(candidate.parameter, str) or not candidate.parameter.strip():
         return "requirement parameter is required"
     if candidate.operator is not None and candidate.operator not in _ALLOWED_OPERATORS:
         return f"unsupported requirement operator {candidate.operator!r}"
@@ -139,16 +146,22 @@ def _validate_requirement(candidate: RequirementCandidate) -> str | None:
         return "requirement value must be finite when supplied"
     if (candidate.operator is None) != (candidate.value is None):
         return "requirement operator and numeric value must be supplied together"
+    if candidate.unit is not None and not isinstance(candidate.unit, str):
+        return "requirement unit must be text when supplied"
+    if not isinstance(candidate.mandatory, bool):
+        return "requirement mandatory flag must be boolean"
     return None
 
 
 def _validate_vendor_fact(candidate: VendorFactCandidate) -> str | None:
-    if not candidate.parameter.strip():
+    if not isinstance(candidate.parameter, str) or not candidate.parameter.strip():
         return "vendor parameter is required"
-    if not candidate.raw_value.strip():
+    if not isinstance(candidate.raw_value, str) or not candidate.raw_value.strip():
         return "vendor raw value is required"
     if not _finite_number(candidate.value):
         return "vendor numeric value must be finite when supplied"
+    if candidate.unit is not None and not isinstance(candidate.unit, str):
+        return "vendor unit must be text when supplied"
     return None
 
 
@@ -157,7 +170,7 @@ def _source_ref(document: Path, evidence: Evidence) -> SourceRef:
         document=document.name,
         page=evidence.page,
         line=evidence.line,
-        section=evidence.section,
+        section=evidence.section if isinstance(evidence.section, str) else None,
     )
 
 
@@ -196,9 +209,9 @@ def validate_extraction(
     evidence snippet that is actually present on the declared PDF page. Invalid
     candidates are reported and never enter the deterministic evaluation core.
     """
-    if not 0.0 <= min_confidence <= 1.0 or not math.isfinite(min_confidence):
+    if not _finite_number(min_confidence) or min_confidence is None or not 0.0 <= min_confidence <= 1.0:
         raise ValueError("min_confidence must be a finite number between 0 and 1")
-    if not batch.provider.strip():
+    if not isinstance(batch.provider, str) or not batch.provider.strip():
         raise ValueError("extraction provider name is required")
 
     document_path = Path(document)
@@ -257,7 +270,10 @@ def extract_with_provider(
     document_path = Path(document)
     batch = extractor.extract(document_path, kind)
     if batch.kind != kind:
-        raise ValueError(f"provider returned {batch.kind.value!r} for requested {kind.value!r} extraction")
-    if batch.provider.strip() != extractor.name.strip():
+        returned_kind = batch.kind.value if isinstance(batch.kind, ExtractionKind) else repr(batch.kind)
+        raise ValueError(f"provider returned {returned_kind!r} for requested {kind.value!r} extraction")
+    if not isinstance(extractor.name, str) or not extractor.name.strip():
+        raise ValueError("extractor name is required")
+    if not isinstance(batch.provider, str) or batch.provider.strip() != extractor.name.strip():
         raise ValueError("provider batch name does not match extractor name")
     return validate_extraction(document_path, batch, min_confidence=min_confidence)
