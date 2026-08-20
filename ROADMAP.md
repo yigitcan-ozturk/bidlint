@@ -36,7 +36,7 @@
 
 ## v0.4 — MCP
 - [x] MCP server exposing extract / compare / explain tools
-- support for long-running document jobs
+- [x] support for long-running document jobs
 
 ## v0.5 — engineering ecosystem
 - IFC property inputs
