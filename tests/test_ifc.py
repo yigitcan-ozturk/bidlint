@@ -211,5 +211,5 @@ def test_vendor_input_dispatch_rejects_ifc_options_for_pdf(tmp_path):
 
     unsupported = tmp_path / "vendor.txt"
     unsupported.write_text("Motor power: 11 kW", encoding="utf-8")
-    with pytest.raises(ValueError, match=".pdf or .ifc"):
+    with pytest.raises(ValueError, match=r"\.pdf, \.ifc or \.xlsx"):
         parse_vendor_input(unsupported)
