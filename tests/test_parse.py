@@ -172,10 +172,10 @@ def test_layout_table_hyphenated_parameter_can_continue_next_line(tmp_path):
     make_sparse_positioned_pdf(
         path,
         [
-            [(50, "Parameter"), (250, "Unit"), (430, "Offered")],
-            [(50, "Maximum allow-"), (250, "bar"), (430, "10")],
+            [(50, "Parameter"), (250, "Unit"), (330, "Required"), (430, "Offered")],
+            [(50, "Maximum allow-"), (250, "bar"), (330, ">= 10"), (430, "10")],
             [(50, "able working pressure")],
-            [(50, "Motor power"), (250, "kW"), (430, "11")],
+            [(50, "Motor power"), (250, "kW"), (330, ">= 10"), (430, "11")],
         ],
     )
     facts = parse_vendor_facts(path)
@@ -190,8 +190,8 @@ def test_layout_table_does_not_guess_unmarked_label_continuation(tmp_path):
     make_sparse_positioned_pdf(
         path,
         [
-            [(50, "Parameter"), (250, "Unit"), (430, "Offered")],
-            [(50, "Maximum allowable"), (250, "bar"), (430, "10")],
+            [(50, "Parameter"), (250, "Unit"), (330, "Required"), (430, "Offered")],
+            [(50, "Maximum allowable"), (250, "bar"), (330, ">= 10"), (430, "10")],
             [(50, "working pressure")],
         ],
     )
