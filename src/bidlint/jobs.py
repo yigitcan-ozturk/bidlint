@@ -95,6 +95,11 @@ class JobManager:
                 data["cancel_requested"] = False
                 self._write_unlocked(data)
 
+    def _forget_future(self, job_id: str, future: Future[Any]) -> None:
+        with self._lock:
+            if self._futures.get(job_id) is future:
+                self._futures.pop(job_id, None)
+
     def submit(
         self,
         *,
@@ -122,51 +127,48 @@ class JobManager:
             self._write_unlocked(record)
             future = self._executor.submit(self._run, job_id, runner)
             self._futures[job_id] = future
+            future.add_done_callback(lambda completed, key=job_id: self._forget_future(key, completed))
         return self.status(job_id)
 
     def _run(self, job_id: str, runner: Callable[[], dict[str, Any]]) -> None:
-        try:
-            with self._lock:
-                record = self._read_unlocked(job_id)
-                if record["status"] == "cancelled" or record.get("cancel_requested"):
-                    record["status"] = "cancelled"
-                    record["finished_at"] = _utc_now()
-                    self._write_unlocked(record)
-                    return
-                record["status"] = "running"
-                record["started_at"] = _utc_now()
+        with self._lock:
+            record = self._read_unlocked(job_id)
+            if record["status"] == "cancelled" or record.get("cancel_requested"):
+                record["status"] = "cancelled"
+                record["finished_at"] = _utc_now()
                 self._write_unlocked(record)
-
-            try:
-                result = runner()
-            except Exception as exc:  # job boundary captures parser/evaluator failures for polling
-                with self._lock:
-                    record = self._read_unlocked(job_id)
-                    if record.get("cancel_requested"):
-                        record["status"] = "cancelled"
-                        record["error"] = None
-                    else:
-                        record["status"] = "failed"
-                        record["error"] = f"{type(exc).__name__}: {exc}"
-                    record["result"] = None
-                    record["finished_at"] = _utc_now()
-                    self._write_unlocked(record)
                 return
+            record["status"] = "running"
+            record["started_at"] = _utc_now()
+            self._write_unlocked(record)
 
+        try:
+            result = runner()
+        except Exception as exc:  # job boundary captures parser/evaluator failures for polling
             with self._lock:
                 record = self._read_unlocked(job_id)
                 if record.get("cancel_requested"):
                     record["status"] = "cancelled"
-                    record["result"] = None
+                    record["error"] = None
                 else:
-                    record["status"] = "completed"
-                    record["result"] = result
-                record["error"] = None
+                    record["status"] = "failed"
+                    record["error"] = f"{type(exc).__name__}: {exc}"
+                record["result"] = None
                 record["finished_at"] = _utc_now()
                 self._write_unlocked(record)
-        finally:
-            with self._lock:
-                self._futures.pop(job_id, None)
+            return
+
+        with self._lock:
+            record = self._read_unlocked(job_id)
+            if record.get("cancel_requested"):
+                record["status"] = "cancelled"
+                record["result"] = None
+            else:
+                record["status"] = "completed"
+                record["result"] = result
+            record["error"] = None
+            record["finished_at"] = _utc_now()
+            self._write_unlocked(record)
 
     def status(self, job_id: str) -> dict[str, Any]:
         with self._lock:
@@ -202,7 +204,6 @@ class JobManager:
             if record["status"] == "queued" and future is not None and future.cancel():
                 record["status"] = "cancelled"
                 record["finished_at"] = _utc_now()
-                self._futures.pop(job_id, None)
             self._write_unlocked(record)
             return self.status(job_id)
 
