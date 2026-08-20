@@ -1,0 +1,68 @@
+[
+  {
+    "name": "motor_offer_workbook",
+    "sheets": [
+      {
+        "name": "Technical Data",
+        "rows": [
+          ["Parameter", "Unit", "Offered"],
+          ["Motor power", "kW", 11],
+          ["Supply voltage", "V", 400],
+          ["Housing", null, "316L stainless steel"],
+          ["Notes", null, "Synthetic sanitized values"]
+        ]
+      }
+    ],
+    "expected": [
+      ["motor power", "11 kW", "Technical Data", 2],
+      ["supply voltage", "400 V", "Technical Data", 3],
+      ["housing", "316L stainless steel", "Technical Data", 4]
+    ]
+  },
+  {
+    "name": "pump_repeated_groups_workbook",
+    "sheets": [
+      {
+        "name": "Offer",
+        "rows": [
+          ["Parameter", "Offered", null, "Property", "Vendor Value"],
+          ["Flow rate", "125 m3/h", null, "Design pressure", "10 bar"],
+          ["Noise level", "68 dB", null, "Motor power", "11 kW"],
+          ["Remarks", "Synthetic sanitized values", null, null, null]
+        ]
+      }
+    ],
+    "expected": [
+      ["flow rate", "125 m3/h", "Offer", 2],
+      ["design pressure", "10 bar", "Offer", 2],
+      ["noise level", "68 dB", "Offer", 3],
+      ["motor power", "11 kW", "Offer", 3]
+    ]
+  },
+  {
+    "name": "multi_sheet_equipment_schedule",
+    "sheets": [
+      {
+        "name": "Cover",
+        "rows": [
+          ["Vendor", "Sanitized Equipment Co."],
+          ["Revision", "B"]
+        ]
+      },
+      {
+        "name": "Pump Schedule",
+        "rows": [
+          ["Item", "Units", "Supplier Value"],
+          ["Rated current", "A", 18.5],
+          ["Frequency", "Hz", 50],
+          [],
+          ["Unrelated metadata", null, 999]
+        ]
+      }
+    ],
+    "expected": [
+      ["rated current", "18.5 A", "Pump Schedule", 2],
+      ["frequency", "50 Hz", "Pump Schedule", 3]
+    ]
+  }
+]
