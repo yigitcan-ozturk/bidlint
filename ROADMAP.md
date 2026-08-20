@@ -27,7 +27,7 @@
 ## v0.2.2 — advanced layout reconstruction
 - [x] coordinate-aligned sparse table rows where intermediate cells are visually blank
 - [x] conservative handling for explicit merged-cell geometry
-- [ ] advanced ambiguous multi-column reconstruction without positional guessing
+- [x] repeated explicit side-by-side header groups without positional guessing
 
 ## v0.3 — optional AI extraction
 - provider-neutral structured extraction interface

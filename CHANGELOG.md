@@ -8,13 +8,15 @@
 - coordinate-aligned recovery for sparse table rows whose intermediate cells are visually blank
 - explicit axis-aligned PDF rectangle capture for conservatively identifying merged intermediate table cells
 - safe recovery when merged geometry leaves parameter and offered cells as distinct boxes
-- regression coverage proving blank unit cells stay unitless, near-boundary fragments are rejected, and merges touching parameter/offered are not guessed
+- deterministic parsing for repeated side-by-side table groups when each group repeats explicit parameter/value headers
+- regression coverage proving blank unit cells stay unitless, near-boundary fragments are rejected, merges touching parameter/offered are not guessed, and incomplete repeated groups are skipped
 
 ### Changed
 
 - development version advanced to `0.2.2.dev0`
 - layout-mode parsing remains the primary path; coordinate and rectangle evidence are used only as conservative fallbacks inside recognized tables
 - content inside a merged intermediate cell is ignored rather than assigned to a single semantic column
+- when a single table header contains both `Item` and `Description`, the parameter column nearest the explicit offered/value header is preferred
 
 ## 0.2.1 — 2026-08-20
 
