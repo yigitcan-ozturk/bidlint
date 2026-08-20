@@ -13,7 +13,7 @@
 
 It turns document evidence into explicit `PASS / DEVIATION / MISSING / REVIEW` findings, keeps source-page provenance, performs deterministic engineering comparisons where possible, and refuses to fabricate certainty where it cannot.
 
-> Latest stable release: **v0.2.1**
+> Latest stable release: **v0.2.2**
 
 ```text
 Specification PDF ──> requirements ──┐
@@ -139,7 +139,7 @@ Housing material:
 316L stainless steel
 ```
 
-Layout-preserved tables with explicit headers, side-by-side numeric fields, final offered values wrapped to the next numeric line, and explicitly hyphenated parameter continuations are also supported conservatively.
+Layout-preserved tables with explicit headers, coordinate-aligned sparse rows, safe explicit rectangle geometry for merged intermediate cells, repeated explicit side-by-side header groups, compact side-by-side numeric fields, final offered values wrapped to the next numeric line, and explicitly hyphenated parameter continuations are supported conservatively.
 
 Descriptive material grades such as `316L stainless steel` stay qualitative; they are not silently converted into a numeric value of `316`.
 
@@ -282,17 +282,17 @@ Detailed references:
 The limits are explicit by design:
 
 - scanned/image-only PDFs require OCR before processing
-- arbitrary merged-cell reconstruction is not implemented
-- sparse or ambiguous multi-column layouts may still need preprocessing
+- merged cells without explicit supported rectangle geometry are not reconstructed
+- arbitrary line-grid tables and ambiguous multi-column layouts without explicit repeated headers may need preprocessing
 - only documented engineering unit families are converted automatically
 - qualitative requirements remain `REVIEW` without an explicit deterministic rule
 - terminology aliases are conservative unless the user provides a project-specific mapping
 
 ## Roadmap
 
-See [`ROADMAP.md`](ROADMAP.md). v0.2.1 hardens realistic vendor PDF layouts, engineering units, sanitized fixtures and batch review exports. v0.2.2 is reserved for coordinate-aware sparse/merged-cell reconstruction before the optional AI extraction milestone.
+See [`ROADMAP.md`](ROADMAP.md). v0.2.2 completes the current deterministic PDF-layout hardening milestone with sparse-row coordinates, explicit merged-cell rectangles and repeated side-by-side header groups. The next milestone is optional AI-assisted structured extraction while keeping deterministic evaluation authoritative.
 
-Later milestones include optional AI-assisted structured extraction, MCP, IFC property inputs and a direct technical-compliance contract for `supplier-scorecard`.
+Later milestones include MCP, IFC property inputs and a direct technical-compliance contract for `supplier-scorecard`.
 
 ## Procurement / engineering tooling
 
