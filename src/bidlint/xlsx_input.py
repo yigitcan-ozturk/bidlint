@@ -112,8 +112,12 @@ def _worksheet_paths(archive: zipfile.ZipFile) -> list[tuple[str, str]]:
         rel_id = sheet.attrib.get(f"{{{_REL_NS}}}id")
         if not name or not rel_id or rel_id not in relationships:
             raise ValueError("XLSX workbook contains an unresolved worksheet")
-        target = relationships[rel_id].lstrip("/")
-        path = posixpath.normpath(posixpath.join("xl", target))
+        target = relationships[rel_id]
+        path = (
+            posixpath.normpath(target.lstrip("/"))
+            if target.startswith("/")
+            else posixpath.normpath(posixpath.join("xl", target))
+        )
         if path.startswith("../") or not path.startswith("xl/"):
             raise ValueError("XLSX worksheet target escapes the package")
         if path not in archive.namelist():
@@ -239,3 +243,5 @@ def parse_xlsx_facts(path: str | Path) -> list[VendorFact]:
             return facts
     except zipfile.BadZipFile as exc:
         raise ValueError("invalid XLSX package") from exc
+    except ET.ParseError as exc:
+        raise ValueError("invalid XLSX XML") from exc
