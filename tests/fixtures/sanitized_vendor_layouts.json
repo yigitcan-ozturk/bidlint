@@ -1,0 +1,62 @@
+[
+  {
+    "name": "industrial_motor_nameplate",
+    "pages": [
+      [
+        [[50, "Document"], [250, "Rev"], [430, "Date"]],
+        [[50, "Sanitized motor datasheet"], [250, "C"], [430, "2026-08-20"]]
+      ],
+      [
+        [[50, "Parameter"], [250, "Unit"], [330, "Required"], [430, "Offered"]],
+        [[50, "Motor power"], [250, "kW"], [330, ">= 10"], [430, "11"]],
+        [[50, "Supply voltage"], [250, "V"], [330, "400"], [430, "400"]],
+        [[50, "Rated current"], [250, "A"], [330, "<= 20"], [430, "18.5"]],
+        [[50, "Frequency"], [250, "Hz"], [330, "50"], [430, "50"]],
+        [[50, "Notes"], [250, "Values at rated duty"]]
+      ]
+    ],
+    "expected": [
+      ["motor power", "11 kW", 2],
+      ["supply voltage", "400 V", 2],
+      ["rated current", "18.5 A", 2],
+      ["frequency", "50 Hz", 2]
+    ]
+  },
+  {
+    "name": "pump_performance_sheet",
+    "pages": [
+      [
+        [[50, "TECHNICAL PERFORMANCE DATA"]],
+        [[50, "Motor power"], [200, "11 kW"], [330, "Flow rate"], [470, "125 m3/h"]],
+        [[50, "Design pressure"], [200, "10 bar"], [330, "Noise level"], [470, "68 dB"]],
+        [[50, "GENERAL NOTES"]],
+        [[50, "Values are synthetic and sanitized"]]
+      ]
+    ],
+    "expected": [
+      ["motor power", "11 kW", 1],
+      ["flow rate", "125 m3/h", 1],
+      ["design pressure", "10 bar", 1],
+      ["noise level", "68 dB", 1]
+    ]
+  },
+  {
+    "name": "valve_wrapped_table",
+    "pages": [
+      [
+        [[50, "Parameter"], [250, "Unit"], [330, "Required"], [430, "Offered"]],
+        [[50, "Maximum allow-"], [250, "bar"], [330, ">= 10"], [430, "10"]],
+        [[50, "able working pressure"]],
+        [[50, "Face to face length"], [250, "mm"], [330, "<= 500"], [430, "450"]],
+        [[50, "Mass"], [250, "kg"], [330, "<= 80"]],
+        [[430, "72"]],
+        [[50, "Remarks"], [250, "Sanitized fixture"]]
+      ]
+    ],
+    "expected": [
+      ["maximum allowable working pressure", "10 bar", 1],
+      ["face to face length", "450 mm", 1],
+      ["mass", "72 kg", 1]
+    ]
+  }
+]

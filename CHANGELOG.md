@@ -10,6 +10,8 @@
 - regression coverage for table footers, unrelated multi-column metadata and end-to-end compliance evaluation
 - deterministic reconstruction when a final offered-value cell wraps to the immediately following numeric line
 - deterministic reconstruction for parameter labels split by an explicit trailing hyphen
+- sanitized motor, pump and valve datasheet layout fixtures rendered into temporary PDFs during tests
+- fixture coverage for multi-page source provenance, metadata noise, side-by-side fields and wrapped table continuations
 - deterministic voltage conversion for `mV`, `V` and `kV`
 - deterministic current conversion for `mA`, `A` and `kA`
 - deterministic frequency conversion for `Hz`, `kHz` and `MHz`
