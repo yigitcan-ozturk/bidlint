@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.2 — 2026-08-20
 
 ### Added
 
@@ -13,7 +13,6 @@
 
 ### Changed
 
-- development version advanced to `0.2.2.dev0`
 - layout-mode parsing remains the primary path; coordinate and rectangle evidence are used only as conservative fallbacks inside recognized tables
 - content inside a merged intermediate cell is ignored rather than assigned to a single semantic column
 - when a single table header contains both `Item` and `Description`, the parameter column nearest the explicit offered/value header is preferred
