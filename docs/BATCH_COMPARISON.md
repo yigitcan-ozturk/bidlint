@@ -8,6 +8,16 @@
 bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf vendor-c.pdf
 ```
 
+For large vendor sets, terminal output can be limited without changing any export:
+
+```bash
+bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf vendor-c.pdf \
+  --top 2 \
+  --output technical-tabulation.csv
+```
+
+`--top N` affects terminal display only. JSON, Markdown, HTML and CSV exports always retain the complete vendor set.
+
 Ranking order is deterministic:
 
 1. higher technical compliance score
@@ -16,6 +26,14 @@ Ranking order is deterministic:
 4. vendor filename for a stable final tie-break
 
 The ranking is a technical comparison only. It does not imply commercial award, purchasing approval or engineering acceptance.
+
+## Markdown review export
+
+```bash
+bidlint rank specification.pdf vendor-a.pdf vendor-b.pdf --output technical-tabulation.md
+```
+
+Markdown includes the deterministic vendor ranking plus a requirement-by-vendor matrix with status, offered value and decision reason. It is useful for pull requests, issue discussions, design notes and review documents where a browser-only report is inconvenient.
 
 ## HTML technical bid tabulation
 
