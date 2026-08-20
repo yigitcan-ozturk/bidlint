@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
+from enum import Enum
 from pathlib import Path
 
 from .document_policy import (
@@ -23,6 +24,31 @@ _SUPPORTED_SUFFIXES = {".pdf", ".ifc", ".xlsx"}
 _CONFLICT_SECTION = "bidlint:evidence-conflict"
 
 
+class EvidenceDisposition(str, Enum):
+    SELECTED = "selected"
+    EQUIVALENT_DUPLICATE = "equivalent-duplicate"
+    CONFLICT = "conflict"
+    LOWER_PRIORITY = "lower-priority"
+
+
+@dataclass(frozen=True, slots=True)
+class PackageEvidenceAudit:
+    canonical_parameter: str
+    fact: VendorFact
+    document_class: DocumentClass | None
+    disposition: EvidenceDisposition
+    priority_rank: int | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "canonical_parameter": self.canonical_parameter,
+            "document_class": self.document_class.value if self.document_class is not None else None,
+            "disposition": self.disposition.value,
+            "priority_rank": self.priority_rank,
+            "fact": asdict(self.fact),
+        }
+
+
 @dataclass(slots=True)
 class VendorPackage:
     root: Path
@@ -32,6 +58,24 @@ class VendorPackage:
     evidence_priority: tuple[DocumentClass, ...]
     facts: list[VendorFact]
     conflicts: list[VendorFact]
+    evidence_audit: tuple[PackageEvidenceAudit, ...] = field(default_factory=tuple)
+
+    def to_audit_dict(self) -> dict[str, object]:
+        return {
+            "root": self.root.name,
+            "documents": [
+                {
+                    "document": document.name,
+                    "document_class": self.document_classes[document.name].value,
+                }
+                for document in self.documents
+            ],
+            "ignored_documents": [document.name for document in self.ignored_documents],
+            "evidence_priority": [document_class.value for document_class in self.evidence_priority],
+            "evidence": [entry.to_dict() for entry in self.evidence_audit],
+            "consolidated_facts": [asdict(fact) for fact in self.facts],
+            "conflicts": [asdict(fact) for fact in self.conflicts],
+        }
 
 
 def _fact_location(fact: VendorFact) -> str:
@@ -102,6 +146,104 @@ def _priority_candidates(
     return [candidate for rank, candidate in ranked if rank == best_rank]
 
 
+def _fact_document_class(
+    fact: VendorFact,
+    document_classes: Mapping[str, DocumentClass | str] | None,
+) -> DocumentClass | None:
+    if fact.source is None or not document_classes:
+        return None
+    document_class = document_classes.get(fact.source.document)
+    if document_class is None:
+        return None
+    return parse_document_class(document_class)
+
+
+def _priority_rank(
+    document_class: DocumentClass | None,
+    evidence_priority: Sequence[DocumentClass | str] | None,
+) -> int | None:
+    if document_class is None:
+        return None
+    priority = normalize_evidence_priority(evidence_priority)
+    try:
+        return priority.index(document_class) + 1
+    except ValueError:
+        return None
+
+
+def _audit_entry(
+    parameter: str,
+    fact: VendorFact,
+    disposition: EvidenceDisposition,
+    document_classes: Mapping[str, DocumentClass | str] | None,
+    evidence_priority: Sequence[DocumentClass | str] | None,
+) -> PackageEvidenceAudit:
+    document_class = _fact_document_class(fact, document_classes)
+    return PackageEvidenceAudit(
+        canonical_parameter=parameter,
+        fact=fact,
+        document_class=document_class,
+        disposition=disposition,
+        priority_rank=_priority_rank(document_class, evidence_priority),
+    )
+
+
+def _consolidate_package_facts(
+    root: str | Path,
+    facts: list[VendorFact],
+    *,
+    aliases: Mapping[str, str] | None = None,
+    document_classes: Mapping[str, DocumentClass | str] | None = None,
+    evidence_priority: Sequence[DocumentClass | str] | None = None,
+) -> tuple[list[VendorFact], list[VendorFact], tuple[PackageEvidenceAudit, ...]]:
+    root_path = Path(root)
+    grouped: dict[str, list[VendorFact]] = {}
+    for fact in facts:
+        key = canonical_parameter(fact.parameter, aliases)
+        grouped.setdefault(key, []).append(fact)
+
+    consolidated: list[VendorFact] = []
+    conflicts: list[VendorFact] = []
+    audit: list[PackageEvidenceAudit] = []
+    for parameter, candidates in grouped.items():
+        preferred = _priority_candidates(candidates, document_classes, evidence_priority)
+        preferred_ids = {id(candidate) for candidate in preferred}
+        lower_priority = [candidate for candidate in candidates if id(candidate) not in preferred_ids]
+        anchor = preferred[0]
+
+        dispositions = {
+            id(candidate): EvidenceDisposition.LOWER_PRIORITY
+            for candidate in lower_priority
+        }
+        if all(_facts_equivalent(anchor, candidate) for candidate in preferred[1:]):
+            consolidated.append(anchor)
+            for candidate in preferred:
+                dispositions[id(candidate)] = (
+                    EvidenceDisposition.SELECTED
+                    if candidate is anchor
+                    else EvidenceDisposition.EQUIVALENT_DUPLICATE
+                )
+        else:
+            conflict = _conflict_fact(root_path, parameter, candidates)
+            consolidated.append(conflict)
+            conflicts.append(conflict)
+            for candidate in preferred:
+                dispositions[id(candidate)] = EvidenceDisposition.CONFLICT
+
+        for candidate in candidates:
+            audit.append(
+                _audit_entry(
+                    parameter,
+                    candidate,
+                    dispositions[id(candidate)],
+                    document_classes,
+                    evidence_priority,
+                )
+            )
+
+    return consolidated, conflicts, tuple(audit)
+
+
 def consolidate_package_facts(
     root: str | Path,
     facts: list[VendorFact],
@@ -111,23 +253,13 @@ def consolidate_package_facts(
     evidence_priority: Sequence[DocumentClass | str] | None = None,
 ) -> tuple[list[VendorFact], list[VendorFact]]:
     """Collapse duplicates and apply only explicitly supplied package evidence priority."""
-    root_path = Path(root)
-    grouped: dict[str, list[VendorFact]] = {}
-    for fact in facts:
-        key = canonical_parameter(fact.parameter, aliases)
-        grouped.setdefault(key, []).append(fact)
-
-    consolidated: list[VendorFact] = []
-    conflicts: list[VendorFact] = []
-    for parameter, candidates in grouped.items():
-        preferred = _priority_candidates(candidates, document_classes, evidence_priority)
-        anchor = preferred[0]
-        if all(_facts_equivalent(anchor, candidate) for candidate in preferred[1:]):
-            consolidated.append(anchor)
-            continue
-        conflict = _conflict_fact(root_path, parameter, candidates)
-        consolidated.append(conflict)
-        conflicts.append(conflict)
+    consolidated, conflicts, _ = _consolidate_package_facts(
+        root,
+        facts,
+        aliases=aliases,
+        document_classes=document_classes,
+        evidence_priority=evidence_priority,
+    )
     return consolidated, conflicts
 
 
@@ -186,7 +318,7 @@ def parse_vendor_package(
         else:
             facts.extend(parse_xlsx_vendor_facts(document, sheet=xlsx_sheet))
 
-    consolidated, conflicts = consolidate_package_facts(
+    consolidated, conflicts, evidence_audit = _consolidate_package_facts(
         root,
         facts,
         aliases=aliases,
@@ -201,6 +333,7 @@ def parse_vendor_package(
         evidence_priority=priority,
         facts=consolidated,
         conflicts=conflicts,
+        evidence_audit=evidence_audit,
     )
 
 

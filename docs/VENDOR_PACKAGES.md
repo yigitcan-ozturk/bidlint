@@ -102,6 +102,22 @@ Selectors are then scoped per vendor input:
 
 This avoids a global selector causing unrelated suppliers in the same ranking run to fail validation.
 
+## Package evidence audit
+
+`VendorPackage.evidence_audit` preserves every parsed technical evidence fact after package classification and records how consolidation treated it.
+
+Each audit entry contains:
+
+- the canonical parameter after built-in and project-specific aliases
+- the original `VendorFact` with source provenance
+- the resolved document class
+- the disposition: `selected`, `equivalent-duplicate`, `conflict` or `lower-priority`
+- the 1-based explicit priority rank when that document class appears in the package priority policy
+
+Audit entries remain in deterministic raw evidence order within each canonical parameter group. A conflict's synthetic `REVIEW` fact remains available through `VendorPackage.conflicts`, while the audit entries retain the original source facts that created it.
+
+`VendorPackage.to_audit_dict()` provides a JSON-ready package-level audit surface containing document classifications, ignored documents, evidence priority, every evidence audit entry, consolidated facts and conflict facts.
+
 ## Duplicate evidence
 
 Facts are grouped by the existing conservative terminology canonicalization.
@@ -169,6 +185,5 @@ Current deliberate limits include:
 
 - only direct-child documents are considered
 - document classification uses deterministic filename rules plus exact programmatic overrides; package manifest and CLI override surfaces are not added yet
-- package-level audit output beyond the existing finding provenance is still planned
 
 See [`ROADMAP.md`](../ROADMAP.md) for the remaining v0.7 work.
