@@ -1,0 +1,58 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read package version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(python3 - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          print(data["project"]["version"])
+          PY
+          )"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "stable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "stable=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Create GitHub release when missing
+        if: steps.version.outputs.stable == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          TAG="v${VERSION}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already exists; nothing to do."
+            exit 0
+          fi
+
+          NOTES="docs/releases/${TAG}.md"
+          if [[ -f "$NOTES" ]]; then
+            gh release create "$TAG" \
+              --target "$GITHUB_SHA" \
+              --title "bidlint $TAG" \
+              --notes-file "$NOTES"
+          else
+            gh release create "$TAG" \
+              --target "$GITHUB_SHA" \
+              --title "bidlint $TAG" \
+              --generate-notes
+          fi
