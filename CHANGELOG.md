@@ -8,13 +8,19 @@
 - local stdio MCP server exposing deterministic `extract`, `compare` and `explain` tools
 - `bidlint-mcp` console entrypoint
 - `BIDLINT_MCP_ROOT` filesystem sandbox for MCP document and alias access
-- regression coverage for MCP tool outputs, path traversal, symlink escapes and argument validation
+- pollable `submit_extract` and `submit_compare` background document jobs
+- `job_status`, `job_result` and cooperative `cancel_job` MCP tools
+- atomically persisted local job records under `.bidlint/jobs`
+- bounded MCP job worker pool configurable with `BIDLINT_MCP_JOB_WORKERS`
+- explicit recovery behavior that marks interrupted queued/running jobs failed after restart
+- regression coverage for MCP tool outputs, path traversal, symlink escapes, job persistence, cancellation and restart recovery
 - MCP server reference documentation
 
 ### Changed
 
 - development version advanced to `0.4.0.dev0`
 - MCP remains an optional integration; the base bidlint install keeps no MCP SDK dependency
+- long-running jobs use bidlint lifecycle tools rather than claiming native MCP Tasks-extension support before the Python SDK exposes it
 
 ## 0.3.0 — 2026-08-20
 
