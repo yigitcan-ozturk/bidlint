@@ -55,6 +55,22 @@ Design pressure    bar         >= 10           10
 
 Recognized parameter headers include `Parameter`, `Property`, `Description`, `Technical Parameter`, and `Item`. Recognized value headers include `Offered`, `Offered Value`, `Vendor Value`, `Supplier Value`, and `Value`.
 
+When more than one parameter-like header appears before one offered/value header, the nearest preceding semantic header is used. This allows a common `Item | Description | Unit | Offered` layout to use `Description` as the actual parameter column rather than interpreting the numeric item number as the parameter.
+
+### Repeated explicit side-by-side header groups
+
+Some datasheets place two independent technical tables on the same visual row. This layout is accepted only when each group repeats its own explicit parameter-like and offered/value headers.
+
+```text
+Parameter     Unit   Offered     Parameter        Unit   Offered
+Motor power   kW     11          Flow rate        m3/h   125
+Pressure      bar    10          Noise level      dB     68
+```
+
+Each complete body row produces one fact per explicit header group. Group boundaries come from the repeated headers, not from interpreting the body values or guessing column positions.
+
+A repeated body row must retain the full header width and every group must produce a valid parameter/value pair. If one group is incomplete, the entire visual row is skipped rather than extracting one side and guessing how the remaining cells shifted.
+
 ### Coordinate-aligned sparse table row
 
 Some PDFs visually leave an intermediate table cell blank. Plain whitespace splitting then shifts later cells left and can make a valid offered value look like the wrong column.
@@ -110,14 +126,14 @@ The reconstructed parameter is `Maximum allowable working pressure`. A plain sin
 
 ### Two side-by-side numeric fields
 
-Some datasheets render two independent fields on the same visual row.
+Some datasheets render two independent fields on the same visual row without a header.
 
 ```text
 Motor power     11 kW        Flow rate       125 m3/h
 Design pressure 10 bar       Noise level     68 dB
 ```
 
-This form is accepted only when both offered values are fully numeric with optional units. The restriction prevents arbitrary four-column text from being interpreted as technical facts.
+This legacy compact form is accepted only when both offered values are fully numeric with optional units. More complex multi-column layouts require explicit repeated headers instead of positional inference.
 
 ## Numeric safety
 
@@ -139,14 +155,15 @@ It is **not** interpreted as the numeric value `316`.
 
 ## Multi-column safety
 
-A visually separated row with three or more columns is not flattened into a two-column fact unless it matches a recognized table schema, the explicit side-by-side numeric pattern, a coordinate-aligned sparse row, or safe explicit rectangle geometry under an active header.
+A visually separated row with three or more columns is not flattened into a two-column fact unless it matches a recognized table schema, repeated explicit header groups, the explicit side-by-side numeric pattern, a coordinate-aligned sparse row, or safe explicit rectangle geometry under an active header.
 
-Table state is also dropped when a row no longer matches the active schema. Common `Note` / `Notes` / `Remark` rows terminate the table instead of becoming vendor parameters.
+Repeated groups are all-or-nothing per visual row: incomplete groups are not partially recovered. Common `Note` / `Notes` / `Remark` rows terminate active table state instead of becoming vendor parameters.
 
 Wrapped-cell handling follows the same evidence rule: a numeric continuation must complete the final offered column, and a label continuation must carry an explicit trailing hyphen. Ordinary headings or free text are never merged merely because they are adjacent.
 
 ## Deliberate limits
 
+- complex multi-column body layouts without explicit repeated headers are not reconstructed by positional guessing
 - merged-cell support currently requires explicit axis-aligned PDF rectangle (`re`) geometry
 - merges touching `Parameter` or `Offered` are rejected
 - content inside merged intermediate cells is not split into semantic sub-values
@@ -156,7 +173,7 @@ Wrapped-cell handling follows the same evidence rule: a numeric continuation mus
 - unmarked wrapped labels are not guessed
 - wrapped qualitative offered values are not inferred
 - arbitrary tables without recognizable headers are not guessed
-- side-by-side qualitative pairs are not inferred
+- side-by-side qualitative pairs without explicit headers are not inferred
 - plain-text label/value pairing without structural or numeric evidence is intentionally conservative
 - OCR remains outside the deterministic parser
 
