@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- optional IfcOpenShell integration through a separate `ifc` package extra
+- deterministic IFC vendor-property extraction into the existing `VendorFact` model
+- explicit IFC element scoping with `--ifc-class` / `--ifc-guid` and optional `--ifc-pset`
+- PDF-or-IFC vendor input dispatch for CLI `extract`, `compare` and `rank`
+- IFC provenance encoded as `IfcClass:GlobalId/Pset` in the existing source section field
+- regression coverage for scalar property extraction, scope ambiguity, provenance and PDF-to-IFC comparison
+- IFC input reference documentation
+
+### Changed
+
+- development version advanced to `0.5.0.dev0`
+- IFC class selection is rejected when it matches multiple elements; callers must use `--ifc-guid` instead of mixing multiple occurrences into one vendor fact set
+- scalar numeric IFC properties remain unitless unless the property value explicitly contains a unit string
+
 ## 0.4.0 — 2026-08-20
 
 ### Added
