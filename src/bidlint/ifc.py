@@ -8,6 +8,7 @@ from typing import Any, Callable
 from .models import SourceRef, VendorFact
 
 _NUMERIC_WITH_UNIT = re.compile(r"^\s*(-?\d+(?:\.\d+)?)\s*([A-Za-z0-9%°/^\-²³]+)\s*$")
+_CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 
 
 def _load_ifc_api() -> tuple[Any, Callable[..., dict[str, dict[str, Any]]]]:
@@ -23,6 +24,12 @@ def _load_ifc_api() -> tuple[Any, Callable[..., dict[str, dict[str, Any]]]]:
 
 def _normalize_unit(unit: str) -> str:
     return unit.strip().lower().replace("º", "°")
+
+
+def _parameter_name(name: Any) -> str:
+    text = str(name).strip().replace("_", " ").replace("-", " ")
+    text = _CAMEL_BOUNDARY.sub(" ", text)
+    return " ".join(text.lower().split())
 
 
 def _scalar_value(value: Any) -> tuple[str, float | None, str | None] | None:
@@ -121,6 +128,8 @@ def parse_ifc_facts(
         model = ifcopenshell.open(str(file_path))
     except Exception as exc:
         raise ValueError(f"unable to open IFC file: {file_path.name}") from exc
+    if model is None:
+        raise ValueError(f"unable to open IFC file: {file_path.name}")
 
     entities = _select_entities(model, ifc_class=ifc_class, global_id=global_id)
     facts: list[VendorFact] = []
@@ -140,13 +149,16 @@ def parse_ifc_facts(
             for property_name in sorted(properties, key=str.casefold):
                 if property_name == "id":
                     continue
+                parameter = _parameter_name(property_name)
+                if not parameter:
+                    continue
                 parsed = _scalar_value(properties[property_name])
                 if parsed is None:
                     continue
                 raw_value, numeric_value, unit = parsed
                 facts.append(
                     VendorFact(
-                        parameter=str(property_name).strip().lower(),
+                        parameter=parameter,
                         raw_value=raw_value,
                         value=numeric_value,
                         unit=unit,
