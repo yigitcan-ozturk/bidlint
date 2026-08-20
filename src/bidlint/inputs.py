@@ -31,4 +31,4 @@ def parse_vendor_input(
             global_id=ifc_guid,
             pset=ifc_pset,
         )
-    raise ValueError("vendor input must end in .pdf, .xlsx or .ifc")
+    raise ValueError("vendor input must end in .pdf or .ifc (or .xlsx)")
