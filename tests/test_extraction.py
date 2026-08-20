@@ -191,6 +191,22 @@ def test_candidate_type_must_match_batch_kind(tmp_path):
     assert result.rejected[0].reason == "candidate type does not match specification extraction"
 
 
+def test_malformed_evidence_object_is_rejected_without_crashing(tmp_path):
+    path = tmp_path / "vendor.pdf"
+    make_pdf(path, [["Motor power: 11 kW"]])
+    candidate = VendorFactCandidate(
+        parameter="motor power",
+        raw_value="11 kW",
+        confidence=0.99,
+        evidence=None,  # type: ignore[arg-type]
+    )
+    batch = ExtractionBatch(provider="mock", kind=ExtractionKind.VENDOR, candidates=[candidate])
+
+    result = validate_extraction(path, batch)
+    assert result.items == []
+    assert result.rejected[0].reason == "evidence object is required"
+
+
 def test_provider_identity_and_requested_kind_are_enforced(tmp_path):
     path = tmp_path / "vendor.pdf"
     make_pdf(path, [["Motor power: 11 kW"]])
