@@ -7,6 +7,7 @@ from difflib import SequenceMatcher
 from .models import ComplianceReport, Finding, Requirement, Status, VendorFact
 from .terminology import canonical_parameter
 from .units import canonical_unit, convert_value
+from .vendor_package import is_conflict_fact
 
 
 def _similarity(a: str, b: str, aliases: Mapping[str, str] | None = None) -> float:
@@ -21,6 +22,8 @@ def _similarity(a: str, b: str, aliases: Mapping[str, str] | None = None) -> flo
 
 
 def _evaluate(req: Requirement, fact: VendorFact) -> tuple[Status, str]:
+    if is_conflict_fact(fact):
+        return Status.REVIEW, fact.raw_value
     if req.operator is None or req.value is None:
         return Status.REVIEW, "Matched a vendor parameter, but the requirement is qualitative or not deterministically comparable."
     if fact.value is None:
