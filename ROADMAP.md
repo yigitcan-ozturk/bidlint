@@ -35,10 +35,10 @@
 - [x] no AI dependency in deterministic evaluation
 
 ## v0.4 — MCP
-- MCP server exposing extract / compare / explain tools
-- support for long-running document jobs
+- [x] MCP server exposing extract / compare / explain tools
+- [ ] support for long-running document jobs
 
 ## v0.5 — engineering ecosystem
-- IFC property inputs
-- supplier-scorecard technical-compliance export contract
-- technical bid tabulation workbook export
+- [ ] IFC property inputs
+- [ ] supplier-scorecard technical-compliance export contract
+- [ ] technical bid tabulation workbook export
