@@ -18,7 +18,8 @@
 ## v0.2.x — hardening and document coverage
 - [x] layout-preserved PDF table rows with explicit parameter/value headers
 - [x] side-by-side numeric parameter/value reconstruction for common technical datasheets
-- [ ] merged/wrapped table cells and advanced multi-column layout reconstruction
+- [x] explicit wrapped offered-value continuations and hyphenated parameter-label continuations
+- [ ] arbitrary merged cells and advanced ambiguous multi-column reconstruction
 - [x] broader engineering unit normalization for electrical, pressure, length, mass, force and temperature units
 - [ ] additional sanitized real-world datasheet fixtures
 - [ ] batch comparison ergonomics and export refinements

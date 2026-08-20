@@ -25,6 +25,16 @@ def make_positioned_pdf(path: Path, rows: list[list[str]], xs: list[int]):
     c.save()
 
 
+def make_sparse_positioned_pdf(path: Path, rows: list[list[tuple[int, str]]]):
+    c = canvas.Canvas(str(path), pagesize=A4)
+    y = 800
+    for row in rows:
+        for x, text in row:
+            c.drawString(x, y, text)
+        y -= 24
+    c.save()
+
+
 def test_pdf_requirement_extraction(tmp_path):
     path = tmp_path / "spec.pdf"
     make_pdf(path, ["6.4 Pumps", "Motor efficiency shall be minimum 90 %", "Noise level must not exceed 70 dB"])
@@ -137,6 +147,56 @@ def test_layout_table_state_resets_before_footer(tmp_path):
     )
     facts = parse_vendor_facts(path)
     assert [(fact.parameter, fact.raw_value) for fact in facts] == [("motor power", "11 kW")]
+
+
+def test_layout_table_offered_value_can_wrap_to_next_line(tmp_path):
+    path = tmp_path / "wrapped-value.pdf"
+    make_sparse_positioned_pdf(
+        path,
+        [
+            [(50, "Parameter"), (250, "Unit"), (330, "Required"), (430, "Offered")],
+            [(50, "Motor power"), (250, "kW"), (330, ">= 10")],
+            [(430, "11")],
+            [(50, "Design pressure"), (250, "bar"), (330, ">= 10"), (430, "10")],
+        ],
+    )
+    facts = parse_vendor_facts(path)
+    assert [(fact.parameter, fact.raw_value) for fact in facts] == [
+        ("motor power", "11 kW"),
+        ("design pressure", "10 bar"),
+    ]
+
+
+def test_layout_table_hyphenated_parameter_can_continue_next_line(tmp_path):
+    path = tmp_path / "wrapped-label.pdf"
+    make_sparse_positioned_pdf(
+        path,
+        [
+            [(50, "Parameter"), (250, "Unit"), (330, "Required"), (430, "Offered")],
+            [(50, "Maximum allow-"), (250, "bar"), (330, ">= 10"), (430, "10")],
+            [(50, "able working pressure")],
+            [(50, "Motor power"), (250, "kW"), (330, ">= 10"), (430, "11")],
+        ],
+    )
+    facts = parse_vendor_facts(path)
+    assert [(fact.parameter, fact.raw_value) for fact in facts] == [
+        ("maximum allowable working pressure", "10 bar"),
+        ("motor power", "11 kW"),
+    ]
+
+
+def test_layout_table_does_not_guess_unmarked_label_continuation(tmp_path):
+    path = tmp_path / "unmarked-wrap.pdf"
+    make_sparse_positioned_pdf(
+        path,
+        [
+            [(50, "Parameter"), (250, "Unit"), (330, "Required"), (430, "Offered")],
+            [(50, "Maximum allowable"), (250, "bar"), (330, ">= 10"), (430, "10")],
+            [(50, "working pressure")],
+        ],
+    )
+    facts = parse_vendor_facts(path)
+    assert [(fact.parameter, fact.raw_value) for fact in facts] == [("maximum allowable", "10 bar")]
 
 
 def test_side_by_side_layout_pairs(tmp_path):

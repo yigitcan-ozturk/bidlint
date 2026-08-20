@@ -10,6 +10,10 @@ _REQUIREMENT_HINT = re.compile(
     r"\b(shall|must|required|minimum|maximum|at least|not less than|not more than|not exceed|no less than|no more than)\b",
     re.IGNORECASE,
 )
+_LABEL_NORMATIVE_HINT = re.compile(
+    r"\b(shall|must|required|at least|not less than|not more than|not exceed|no less than|no more than)\b",
+    re.IGNORECASE,
+)
 
 _COMPARATOR_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (
@@ -135,11 +139,9 @@ def _looks_like_label(text: str) -> bool:
         return False
     if not re.search(r"[A-Za-z]", text):
         return False
-    if _SECTION.match(text) or _REQUIREMENT_HINT.search(text):
+    if _SECTION.match(text) or _LABEL_NORMATIVE_HINT.search(text):
         return False
-    if _NUMERIC_VALUE.fullmatch(text):
-        return False
-    return True
+    return not _NUMERIC_VALUE.fullmatch(text)
 
 
 def _parse_structured_vendor_line(line: str) -> tuple[str, str] | None:
@@ -236,6 +238,50 @@ def _paired_layout_facts(
     ]
 
 
+def _wrapped_offered_fact(
+    path: Path,
+    page: PageText,
+    line_no: int,
+    columns: list[str],
+    next_columns: list[str],
+    header: TableHeader,
+) -> VendorFact | None:
+    """Complete a row only when the final offered cell is an explicit numeric continuation."""
+    parameter_index, _, offered_index, header_width = header
+    if offered_index != header_width - 1 or len(columns) != header_width - 1:
+        return None
+    if parameter_index >= len(columns) or not _looks_like_label(columns[parameter_index]):
+        return None
+    if len(next_columns) != 1 or not _NUMERIC_VALUE.fullmatch(next_columns[0]):
+        return None
+    return _table_row_fact(path, page, line_no, [*columns, next_columns[0]], header)
+
+
+def _hyphenated_label_fact(
+    path: Path,
+    page: PageText,
+    line_no: int,
+    columns: list[str],
+    next_columns: list[str],
+    header: TableHeader,
+    table_fact: VendorFact,
+) -> VendorFact | None:
+    """Join an explicitly hyphenated parameter label to a single-cell continuation line."""
+    parameter_index, _, _, _ = header
+    if parameter_index >= len(columns):
+        return None
+    label = columns[parameter_index].rstrip()
+    if not label.endswith("-") or len(next_columns) != 1:
+        return None
+
+    continuation = next_columns[0].strip()
+    if not _looks_like_label(continuation) or _normalize_header(continuation) in _TABLE_TERMINATORS:
+        return None
+
+    combined_label = f"{label[:-1]}{continuation}"
+    return _make_vendor_fact(path, page, line_no, combined_label, table_fact.raw_value)
+
+
 def parse_requirements(path: str | Path) -> list[Requirement]:
     path = Path(path)
     pages = extract_pages(path)
@@ -293,10 +339,12 @@ def parse_vendor_facts(path: str | Path) -> list[VendorFact]:
     - a label followed by a *numeric + unit* value on the next line
     - layout-preserved tables with explicit parameter/value headers
     - two numeric label/value pairs rendered side-by-side on one visual row
+    - offered values wrapped to the next line when the offered column is last
+    - parameter labels split with an explicit trailing hyphen
 
-    Table reconstruction remains conservative: only explicit headers or fully
-    numeric side-by-side pairs are accepted. Ambiguous 3+ column rows are
-    skipped rather than flattened into false facts.
+    Table reconstruction remains conservative: only explicit headers, fully
+    numeric side-by-side pairs, or explicit continuation evidence are accepted.
+    Ambiguous 3+ column rows are skipped rather than flattened into false facts.
     """
     path = Path(path)
     pages = extract_pages(path, layout=True)
@@ -317,8 +365,40 @@ def parse_vendor_facts(path: str | Path) -> list[VendorFact]:
                 continue
 
             if active_table is not None:
+                next_columns: list[str] = []
+                if index + 1 < len(lines):
+                    _, next_line = lines[index + 1]
+                    next_columns = _split_layout_columns(next_line)
+
+                wrapped_fact = _wrapped_offered_fact(
+                    path,
+                    page,
+                    line_no,
+                    columns,
+                    next_columns,
+                    active_table,
+                )
+                if wrapped_fact is not None:
+                    facts.append(wrapped_fact)
+                    index += 2
+                    continue
+
                 table_fact = _table_row_fact(path, page, line_no, columns, active_table)
                 if table_fact is not None:
+                    hyphenated_fact = _hyphenated_label_fact(
+                        path,
+                        page,
+                        line_no,
+                        columns,
+                        next_columns,
+                        active_table,
+                        table_fact,
+                    )
+                    if hyphenated_fact is not None:
+                        facts.append(hyphenated_fact)
+                        index += 2
+                        continue
+
                     facts.append(table_fact)
                     index += 1
                     continue
