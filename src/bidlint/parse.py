@@ -6,7 +6,7 @@ from collections import defaultdict, deque
 from pathlib import Path
 
 from .models import Requirement, SourceRef, VendorFact
-from .pdf import PageText, PositionedPage, PositionedRow, extract_pages, extract_positioned_pages
+from .pdf import PageText, PositionedPage, PositionedRectangle, PositionedRow, extract_pages, extract_positioned_pages
 
 _REQUIREMENT_HINT = re.compile(
     r"\b(shall|must|required|minimum|maximum|at least|not less than|not more than|not exceed|no less than|no more than)\b",
@@ -289,32 +289,153 @@ def _hyphenated_label_fact(
     return _make_vendor_fact(path, page, line_no, combined_label, table_fact.raw_value)
 
 
-def _positioned_row_cells(row: PositionedRow, anchors: tuple[float, ...]) -> list[str] | None:
-    """Assign fragments to explicit header anchors only when the x position is unambiguous."""
-    if len(anchors) < 2 or len(row.fragments) == 0:
+def _column_for_x(x: float, anchors: tuple[float, ...]) -> int | None:
+    if len(anchors) < 2:
+        return None
+    boundaries = tuple((left + right) / 2 for left, right in zip(anchors, anchors[1:]))
+    column = bisect_right(boundaries, x)
+    anchor = anchors[column]
+    neighboring_gaps: list[float] = []
+    if column > 0:
+        neighboring_gaps.append(anchor - anchors[column - 1])
+    if column + 1 < len(anchors):
+        neighboring_gaps.append(anchors[column + 1] - anchor)
+    if not neighboring_gaps:
         return None
 
-    boundaries = tuple((left + right) / 2 for left, right in zip(anchors, anchors[1:]))
+    max_offset = max(12.0, min(neighboring_gaps) * 0.35)
+    if abs(x - anchor) > max_offset:
+        return None
+    return column
+
+
+def _positioned_row_cells(row: PositionedRow, anchors: tuple[float, ...]) -> list[str] | None:
+    """Assign fragments to explicit header anchors only when the x position is unambiguous."""
+    if len(row.fragments) == 0:
+        return None
+
     cells = [""] * len(anchors)
-
     for fragment in row.fragments:
-        column = bisect_right(boundaries, fragment.x)
-        anchor = anchors[column]
-        neighboring_gaps: list[float] = []
-        if column > 0:
-            neighboring_gaps.append(anchor - anchors[column - 1])
-        if column + 1 < len(anchors):
-            neighboring_gaps.append(anchors[column + 1] - anchor)
-        if not neighboring_gaps:
+        column = _column_for_x(fragment.x, anchors)
+        if column is None:
+            return None
+        cells[column] = f"{cells[column]} {fragment.text}".strip()
+    return cells
+
+
+def _rectangle_anchor_columns(rectangle: PositionedRectangle, anchors: tuple[float, ...]) -> tuple[int, ...]:
+    tolerance = 2.0
+    return tuple(
+        index
+        for index, anchor in enumerate(anchors)
+        if rectangle.x0 - tolerance <= anchor <= rectangle.x1 + tolerance
+    )
+
+
+def _row_rectangle_spans(
+    page: PositionedPage,
+    row: PositionedRow,
+    anchors: tuple[float, ...],
+) -> list[tuple[PositionedRectangle, tuple[int, ...]]]:
+    if not row.fragments or not page.rectangles:
+        return []
+    baseline = sum(fragment.y for fragment in row.fragments) / len(row.fragments)
+    spans: list[tuple[PositionedRectangle, tuple[int, ...]]] = []
+    for rectangle in page.rectangles:
+        if not 4.0 <= rectangle.height <= 60.0:
+            continue
+        if not rectangle.y0 - 2.0 <= baseline <= rectangle.y1 + 2.0:
+            continue
+        columns = _rectangle_anchor_columns(rectangle, anchors)
+        if columns:
+            spans.append((rectangle, columns))
+    return spans
+
+
+def _fragment_inside_rectangle(fragment_x: float, rectangle: PositionedRectangle) -> bool:
+    return rectangle.x0 - 2.0 <= fragment_x <= rectangle.x1 + 2.0
+
+
+def _row_has_merged_geometry(page: PositionedPage, row: PositionedRow, anchors: tuple[float, ...]) -> bool:
+    return any(len(columns) > 1 for _, columns in _row_rectangle_spans(page, row, anchors))
+
+
+def _merged_geometry_cells(
+    page: PositionedPage,
+    row: PositionedRow,
+    header: TableHeader,
+    anchors: tuple[float, ...],
+) -> list[str] | None:
+    """Recover only rows whose merged rectangles leave parameter/offered cells distinct."""
+    spans = _row_rectangle_spans(page, row, anchors)
+    merged = [(rectangle, columns) for rectangle, columns in spans if len(columns) > 1]
+    if not merged:
+        return None
+
+    parameter_index, _, offered_index, header_width = header
+    if any(parameter_index in columns or offered_index in columns for _, columns in merged):
+        return None
+
+    singles = {(columns[0], rectangle) for rectangle, columns in spans if len(columns) == 1}
+    single_columns = {column for column, _ in singles}
+    if parameter_index not in single_columns or offered_index not in single_columns:
+        return None
+
+    cells = [""] * header_width
+    for fragment in row.fragments:
+        containing = [
+            (rectangle, columns)
+            for rectangle, columns in spans
+            if _fragment_inside_rectangle(fragment.x, rectangle)
+        ]
+        if not containing:
             return None
 
-        max_offset = max(12.0, min(neighboring_gaps) * 0.35)
-        if abs(fragment.x - anchor) > max_offset:
-            return None
+        if any(len(columns) > 1 for _, columns in containing):
+            # Content inside a merged intermediate cell cannot be assigned to a
+            # single semantic column, so it is deliberately ignored.
+            continue
 
+        column = _column_for_x(fragment.x, anchors)
+        if column is None or column not in single_columns:
+            return None
+        if not any(columns == (column,) for _, columns in containing):
+            return None
         cells[column] = f"{cells[column]} {fragment.text}".strip()
 
+    label = cells[parameter_index].strip()
+    offered = cells[offered_index].strip()
+    if not label or not offered or not _looks_like_label(label):
+        return None
     return cells
+
+
+def _geometry_merged_rows(page: PositionedPage | None) -> CoordinateRows:
+    candidates: CoordinateRows = defaultdict(deque)
+    if page is None:
+        return candidates
+
+    active: tuple[TableHeader, tuple[float, ...]] | None = None
+    for row in page.rows:
+        header_cells = [fragment.text for fragment in row.fragments]
+        header = _table_header(header_cells)
+        if header is not None:
+            active = (header, tuple(fragment.x for fragment in row.fragments))
+            continue
+        if active is None:
+            continue
+
+        active_header, anchors = active
+        first = row.fragments[0].text if row.fragments else ""
+        if _normalize_header(first) in _TABLE_TERMINATORS:
+            active = None
+            continue
+
+        columns = _merged_geometry_cells(page, row, active_header, anchors)
+        if columns is not None:
+            candidates[_line_key(row.text)].append(columns)
+
+    return candidates
 
 
 def _coordinate_sparse_rows(page: PositionedPage | None) -> CoordinateRows:
@@ -335,6 +456,11 @@ def _coordinate_sparse_rows(page: PositionedPage | None) -> CoordinateRows:
             continue
 
         active_header, anchors = active
+        if _row_has_merged_geometry(page, row, anchors):
+            # Explicit geometry takes precedence. Do not let coordinate-only
+            # fallback reinterpret content inside a merged cell as a unit/value.
+            continue
+
         columns = _positioned_row_cells(row, anchors)
         if columns is None:
             active = None
@@ -437,14 +563,15 @@ def parse_vendor_facts(path: str | Path) -> list[VendorFact]:
     - a label followed by a *numeric + unit* value on the next line
     - layout-preserved tables with explicit parameter/value headers
     - coordinate-aligned sparse table rows with visually blank intermediate cells
+    - rows with explicit rectangle geometry merging only intermediate table cells
     - two numeric label/value pairs rendered side-by-side on one visual row
     - offered values wrapped to the next line when the offered column is last
     - parameter labels split with an explicit trailing hyphen
 
     Table reconstruction remains conservative: only explicit headers, fully
-    numeric side-by-side pairs, explicit continuation evidence, or coordinate
-    alignment to an active header are accepted. Ambiguous rows are skipped
-    rather than flattened into false facts.
+    numeric side-by-side pairs, explicit continuation evidence, coordinate
+    alignment, or explicit safe rectangle geometry are accepted. Ambiguous rows
+    are skipped rather than flattened into false facts.
     """
     path = Path(path)
     pages = extract_pages(path, layout=True)
@@ -453,7 +580,9 @@ def parse_vendor_facts(path: str | Path) -> list[VendorFact]:
 
     for page in pages:
         lines = _split_lines(page)
-        coordinate_rows = _coordinate_sparse_rows(positioned_pages.get(page.page))
+        positioned_page = positioned_pages.get(page.page)
+        geometry_rows = _geometry_merged_rows(positioned_page)
+        coordinate_rows = _coordinate_sparse_rows(positioned_page)
         index = 0
         active_table: TableHeader | None = None
         while index < len(lines):
@@ -471,6 +600,14 @@ def parse_vendor_facts(path: str | Path) -> list[VendorFact]:
                 if index + 1 < len(lines):
                     _, next_line = lines[index + 1]
                     next_columns = _split_layout_columns(next_line)
+
+                geometry_columns = _take_coordinate_columns(geometry_rows, line, active_table)
+                if geometry_columns is not None:
+                    geometry_fact = _table_row_fact(path, page, line_no, geometry_columns, active_table)
+                    if geometry_fact is not None:
+                        facts.append(geometry_fact)
+                        index += 1
+                        continue
 
                 coordinate_columns = _take_coordinate_columns(coordinate_rows, line, active_table)
                 if coordinate_columns is not None:
