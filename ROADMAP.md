@@ -39,6 +39,6 @@
 - [x] support for long-running document jobs
 
 ## v0.5 — engineering ecosystem
-- IFC property inputs
+- [x] IFC property inputs
 - supplier-scorecard technical-compliance export contract
 - technical bid tabulation workbook export
