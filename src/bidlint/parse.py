@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
+from collections import defaultdict, deque
 from pathlib import Path
 
 from .models import Requirement, SourceRef, VendorFact
-from .pdf import PageText, extract_pages
+from .pdf import PageText, PositionedPage, PositionedRow, extract_pages, extract_positioned_pages
 
 _REQUIREMENT_HINT = re.compile(
     r"\b(shall|must|required|minimum|maximum|at least|not less than|not more than|not exceed|no less than|no more than)\b",
@@ -90,6 +92,7 @@ _STOPWORDS = {
 }
 
 TableHeader = tuple[int, int | None, int, int]
+CoordinateRows = dict[str, deque[list[str]]]
 
 
 def _normalize_unit(unit: str | None) -> str | None:
@@ -118,6 +121,10 @@ def _parameter_from_text(text: str, match_start: int | None = None) -> str:
 
 def _split_lines(page: PageText) -> list[tuple[int, str]]:
     return [(i, line.strip()) for i, line in enumerate(page.text.splitlines(), start=1) if line.strip()]
+
+
+def _line_key(text: str) -> str:
+    return " ".join(text.split())
 
 
 def _parse_numeric_value(raw_value: str) -> tuple[float | None, str | None]:
@@ -282,6 +289,97 @@ def _hyphenated_label_fact(
     return _make_vendor_fact(path, page, line_no, combined_label, table_fact.raw_value)
 
 
+def _positioned_row_cells(row: PositionedRow, anchors: tuple[float, ...]) -> list[str] | None:
+    """Assign fragments to explicit header anchors only when the x position is unambiguous."""
+    if len(anchors) < 2 or len(row.fragments) == 0:
+        return None
+
+    boundaries = tuple((left + right) / 2 for left, right in zip(anchors, anchors[1:], strict=True))
+    cells = [""] * len(anchors)
+
+    for fragment in row.fragments:
+        column = bisect_right(boundaries, fragment.x)
+        anchor = anchors[column]
+        neighboring_gaps: list[float] = []
+        if column > 0:
+            neighboring_gaps.append(anchor - anchors[column - 1])
+        if column + 1 < len(anchors):
+            neighboring_gaps.append(anchors[column + 1] - anchor)
+        if not neighboring_gaps:
+            return None
+
+        max_offset = max(12.0, min(neighboring_gaps) * 0.35)
+        if abs(fragment.x - anchor) > max_offset:
+            return None
+
+        cells[column] = f"{cells[column]} {fragment.text}".strip()
+
+    return cells
+
+
+def _coordinate_sparse_rows(page: PositionedPage | None) -> CoordinateRows:
+    """Index rows whose blank intermediate cells are proven by header-aligned coordinates."""
+    candidates: CoordinateRows = defaultdict(deque)
+    if page is None:
+        return candidates
+
+    active: tuple[TableHeader, tuple[float, ...]] | None = None
+    for row in page.rows:
+        header_cells = [fragment.text for fragment in row.fragments]
+        header = _table_header(header_cells)
+        if header is not None:
+            active = (header, tuple(fragment.x for fragment in row.fragments))
+            continue
+
+        if active is None:
+            continue
+
+        active_header, anchors = active
+        columns = _positioned_row_cells(row, anchors)
+        if columns is None:
+            active = None
+            continue
+
+        parameter_index, _, offered_index, header_width = active_header
+        if len(columns) != header_width:
+            active = None
+            continue
+
+        label = columns[parameter_index].strip()
+        if label and _normalize_header(label) in _TABLE_TERMINATORS:
+            active = None
+            continue
+
+        # Single-cell continuation rows are handled by the existing explicit
+        # wrapped-value / hyphen rules and do not prove a sparse table row.
+        if not label or not columns[offered_index].strip():
+            continue
+        if not _looks_like_label(label):
+            continue
+
+        non_empty = sum(bool(cell.strip()) for cell in columns)
+        if non_empty >= header_width:
+            continue
+
+        candidates[_line_key(row.text)].append(columns)
+
+    return candidates
+
+
+def _take_coordinate_columns(rows: CoordinateRows, line: str, header: TableHeader) -> list[str] | None:
+    key = _line_key(line)
+    candidates = rows.get(key)
+    if not candidates:
+        return None
+
+    header_width = header[3]
+    while candidates:
+        columns = candidates.popleft()
+        if len(columns) == header_width:
+            return columns
+    return None
+
+
 def parse_requirements(path: str | Path) -> list[Requirement]:
     path = Path(path)
     pages = extract_pages(path)
@@ -338,20 +436,24 @@ def parse_vendor_facts(path: str | Path) -> list[VendorFact]:
     - ``Parameter:`` followed by a value on the next non-empty line
     - a label followed by a *numeric + unit* value on the next line
     - layout-preserved tables with explicit parameter/value headers
+    - coordinate-aligned sparse table rows with visually blank intermediate cells
     - two numeric label/value pairs rendered side-by-side on one visual row
     - offered values wrapped to the next line when the offered column is last
     - parameter labels split with an explicit trailing hyphen
 
     Table reconstruction remains conservative: only explicit headers, fully
-    numeric side-by-side pairs, or explicit continuation evidence are accepted.
-    Ambiguous 3+ column rows are skipped rather than flattened into false facts.
+    numeric side-by-side pairs, explicit continuation evidence, or coordinate
+    alignment to an active header are accepted. Ambiguous rows are skipped
+    rather than flattened into false facts.
     """
     path = Path(path)
     pages = extract_pages(path, layout=True)
+    positioned_pages = {page.page: page for page in extract_positioned_pages(path)}
     facts: list[VendorFact] = []
 
     for page in pages:
         lines = _split_lines(page)
+        coordinate_rows = _coordinate_sparse_rows(positioned_pages.get(page.page))
         index = 0
         active_table: TableHeader | None = None
         while index < len(lines):
@@ -369,6 +471,28 @@ def parse_vendor_facts(path: str | Path) -> list[VendorFact]:
                 if index + 1 < len(lines):
                     _, next_line = lines[index + 1]
                     next_columns = _split_layout_columns(next_line)
+
+                coordinate_columns = _take_coordinate_columns(coordinate_rows, line, active_table)
+                if coordinate_columns is not None:
+                    coordinate_fact = _table_row_fact(path, page, line_no, coordinate_columns, active_table)
+                    if coordinate_fact is not None:
+                        hyphenated_fact = _hyphenated_label_fact(
+                            path,
+                            page,
+                            line_no,
+                            coordinate_columns,
+                            next_columns,
+                            active_table,
+                            coordinate_fact,
+                        )
+                        if hyphenated_fact is not None:
+                            facts.append(hyphenated_fact)
+                            index += 2
+                            continue
+
+                        facts.append(coordinate_fact)
+                        index += 1
+                        continue
 
                 wrapped_fact = _wrapped_offered_fact(
                     path,
