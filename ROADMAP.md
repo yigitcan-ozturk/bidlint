@@ -42,3 +42,11 @@
 - [x] IFC property inputs
 - [x] supplier-scorecard technical-compliance export contract
 - [x] technical bid tabulation workbook export
+
+## v0.6 — structured vendor workbooks
+- [x] dependency-free XLSX vendor input for explicit parameter/value tables
+- [x] sheet and row provenance for workbook facts
+- [x] repeated explicit header groups without positional guessing
+- [x] reject formula-driven cells instead of trusting potentially stale cached results
+- [ ] mixed PDF / XLSX / IFC CLI ergonomics and documentation hardening
+- [ ] sanitized real-world vendor workbook fixtures
