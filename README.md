@@ -9,16 +9,18 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-`bidlint` is an open-source technical bid compliance engine for comparing engineering specifications with vendor datasheets, bids, submittals and explicitly scoped IFC property inputs.
+`bidlint` is an open-source technical bid compliance engine for comparing engineering specifications with vendor datasheets, bids, submittals, explicit XLSX offer tables and explicitly scoped IFC property inputs.
 
 It turns document evidence into explicit `PASS / DEVIATION / MISSING / REVIEW` findings, keeps source provenance, performs deterministic engineering comparisons where possible, and refuses to fabricate certainty where it cannot.
 
 > Latest stable release: **v0.5.0**
+>
+> Development version: **v0.6.0.dev0** adds explicit formula-free XLSX vendor inputs.
 
 ```text
 Specification PDF ──> requirements ──┐
                                      ├──> terminology + unit-aware rules ──> findings
-Vendor PDF / IFC ────> offered facts ┘                              │
+Vendor PDF / XLSX / IFC ─> facts ────┘                              │
                                                                     ├──> JSON / CSV / Markdown / HTML / XLSX
 Multiple vendors ────────────────────────────────────────────────────└──> technical bid tabulation
 ```
@@ -151,6 +153,25 @@ Layout-preserved tables with explicit headers, coordinate-aligned sparse rows, s
 Descriptive material grades such as `316L stainless steel` stay qualitative; they are not silently converted into a numeric value of `316`.
 
 See [`docs/VENDOR_PARSING.md`](docs/VENDOR_PARSING.md).
+
+### XLSX vendor inputs
+
+The `v0.6.0.dev0` development line can read an explicit formula-free XLSX offer table directly into the existing `VendorFact` model without adding a spreadsheet runtime dependency:
+
+```bash
+bidlint compare specification.pdf supplier-offer.xlsx
+```
+
+A worksheet must expose one parameter column and one offered-value column, with optional unit and section columns. When more than one visible worksheet exists, the caller selects one explicitly:
+
+```bash
+bidlint compare specification.pdf supplier-offer.xlsx \
+  --xlsx-sheet "Technical Offer"
+```
+
+Spreadsheet evidence preserves the workbook filename, row number and selected worksheet/section. Formulas, macros, external relationships, hidden evidence sheets, merged cells and ambiguous header layouts are rejected rather than calculated or guessed.
+
+See [`docs/XLSX_VENDOR_INPUT.md`](docs/XLSX_VENDOR_INPUT.md).
 
 ### IFC vendor inputs
 
@@ -288,6 +309,7 @@ Requirements:
 - Python 3.11+
 - text-based PDFs for PDF extraction
 - optional IfcOpenShell only when IFC vendor inputs are required
+- no spreadsheet runtime dependency is required for XLSX vendor input or XLSX output
 
 Install from source:
 
@@ -310,11 +332,12 @@ Inspect extraction before comparing:
 ```bash
 bidlint extract specification.pdf --kind specification
 bidlint extract vendor.pdf --kind vendor
+bidlint extract vendor.xlsx --kind vendor --xlsx-sheet "Technical Offer"
 ```
 
 ## Design principles
 
-**Evidence before confidence.** Every result should remain traceable to its source document or selected IFC element.
+**Evidence before confidence.** Every result should remain traceable to its source document, selected XLSX row or selected IFC element.
 
 **Deterministic where possible.** Numeric limits, unit conversions and explicit terminology mappings belong in code, not model opinion.
 
@@ -330,6 +353,7 @@ bidlint extract vendor.pdf --kind vendor
 Specification PDF ──> requirement parser ─────────────────────┐
                                                               │
 Vendor PDF ────────> vendor parser ────────────────────────────┤
+Vendor XLSX ───────> explicit OOXML table adapter ─> VendorFact┤
 IFC element ───────> property adapter ──> VendorFact ──────────┤
 optional provider ─> evidence validator ───────────────────────┤
                                                               ▼
@@ -353,6 +377,7 @@ Detailed references:
 - [`Data contract`](docs/DATA_CONTRACT.md)
 - [`Engineering units`](docs/ENGINEERING_UNITS.md)
 - [`Vendor parsing`](docs/VENDOR_PARSING.md)
+- [`XLSX vendor inputs`](docs/XLSX_VENDOR_INPUT.md)
 - [`IFC inputs`](docs/IFC.md)
 - [`Optional structured extraction`](docs/AI_EXTRACTION.md)
 - [`MCP server`](docs/MCP.md)
@@ -373,6 +398,8 @@ The limits are explicit by design:
 - terminology aliases are conservative unless the user provides a project-specific mapping
 - no optional AI/model provider implementation is bundled in the core package
 - provider evidence validation proves page-local text presence, not semantic correctness
+- XLSX vendor input requires explicit parameter/offered headers and does not evaluate formulas or reconstruct merged cells
+- multiple visible XLSX worksheets require explicit `--xlsx-sheet` selection
 - IFC input is property-based only; geometry is not evaluated
 - IFC class selection must resolve to one element or callers must provide `--ifc-guid`
 - MCP is optional and local/stdin-stdout rather than a remote service
@@ -382,7 +409,7 @@ The limits are explicit by design:
 
 ## Roadmap
 
-See [`ROADMAP.md`](ROADMAP.md). `v0.5.0` completes the published engineering-ecosystem milestone: explicitly scoped IFC property inputs, a safe `supplier-scorecard` technical-compliance hand-off, and spreadsheet-native technical bid tabulation export.
+See [`ROADMAP.md`](ROADMAP.md). `v0.5.0` is the latest stable engineering-ecosystem release. The `v0.6.0.dev0` development milestone adds explicit XLSX vendor input while preserving the same deterministic evaluator and provenance model.
 
 Future work should be deliberately scoped rather than weakening the deterministic evidence-first boundary.
 
@@ -414,7 +441,7 @@ GitHub Actions targets Python 3.11, 3.12 and 3.13 and can also be started manual
 
 Technical documents may contain confidential project, vendor or commercial information. The deterministic core runs locally and does not transmit documents to an external AI API. Optional provider integrations are responsible for their own data-handling and network policies.
 
-The MCP server stays local by default and restricts file access to its configured root. IFC files are read locally through the optional adapter. See [`SECURITY.md`](SECURITY.md) before exposing document processing as a network service or connecting external extraction providers.
+XLSX vendor tables are read locally without formula evaluation or external-link traversal. The MCP server stays local by default and restricts file access to its configured root. IFC files are read locally through the optional adapter. See [`SECURITY.md`](SECURITY.md) before exposing document processing as a network service or connecting external extraction providers.
 
 ## Contributing
 

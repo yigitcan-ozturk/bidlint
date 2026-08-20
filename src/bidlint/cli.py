@@ -84,19 +84,42 @@ def _add_ifc_options(command: argparse.ArgumentParser) -> None:
     group.add_argument("--ifc-pset", help="optionally restrict IFC properties to one property-set name")
 
 
+def _add_xlsx_options(command: argparse.ArgumentParser) -> None:
+    group = command.add_argument_group("XLSX vendor selection")
+    group.add_argument(
+        "--xlsx-sheet",
+        help="select one visible worksheet when a vendor .xlsx contains multiple visible sheets",
+    )
+
+
 def _ifc_options_supplied(args: argparse.Namespace) -> bool:
     return any(getattr(args, name, None) is not None for name in ("ifc_class", "ifc_guid", "ifc_pset"))
 
 
+def _xlsx_options_supplied(args: argparse.Namespace) -> bool:
+    return getattr(args, "xlsx_sheet", None) is not None
+
+
 def _parse_cli_vendor(vendor: str, args: argparse.Namespace, *, mixed_rank: bool = False):
     suffix = Path(vendor).suffix.lower()
-    if mixed_rank and suffix == ".pdf":
-        return parse_vendor_input(vendor)
+    if mixed_rank:
+        if suffix == ".pdf":
+            return parse_vendor_input(vendor)
+        if suffix == ".xlsx":
+            return parse_vendor_input(vendor, xlsx_sheet=getattr(args, "xlsx_sheet", None))
+        if suffix == ".ifc":
+            return parse_vendor_input(
+                vendor,
+                ifc_class=getattr(args, "ifc_class", None),
+                ifc_guid=getattr(args, "ifc_guid", None),
+                ifc_pset=getattr(args, "ifc_pset", None),
+            )
     return parse_vendor_input(
         vendor,
         ifc_class=getattr(args, "ifc_class", None),
         ifc_guid=getattr(args, "ifc_guid", None),
         ifc_pset=getattr(args, "ifc_pset", None),
+        xlsx_sheet=getattr(args, "xlsx_sheet", None),
     )
 
 
@@ -117,11 +140,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"bidlint {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    compare_cmd = sub.add_parser("compare", help="compare a specification PDF with one vendor PDF or IFC input")
+    compare_cmd = sub.add_parser("compare", help="compare a specification PDF with one vendor PDF, IFC or XLSX input")
     compare_cmd.add_argument("specification")
     compare_cmd.add_argument("vendor")
     _add_matching_options(compare_cmd)
     _add_ifc_options(compare_cmd)
+    _add_xlsx_options(compare_cmd)
     compare_cmd.add_argument("--json", action="store_true", help="print machine-readable JSON")
     compare_cmd.add_argument("--markdown", action="store_true", help="print Markdown report")
     compare_cmd.add_argument("--html", action="store_true", help="print self-contained HTML report")
@@ -136,11 +160,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="supplier name used in --scorecard-output",
     )
 
-    rank_cmd = sub.add_parser("rank", help="compare multiple vendor PDF/IFC inputs against one specification")
+    rank_cmd = sub.add_parser("rank", help="compare multiple vendor PDF/IFC/XLSX inputs against one specification")
     rank_cmd.add_argument("specification")
-    rank_cmd.add_argument("vendors", nargs="+", help="two or more vendor PDF/IFC files")
+    rank_cmd.add_argument("vendors", nargs="+", help="two or more vendor PDF/IFC/XLSX files")
     _add_matching_options(rank_cmd)
     _add_ifc_options(rank_cmd)
+    _add_xlsx_options(rank_cmd)
     rank_cmd.add_argument("--json", action="store_true", help="print portfolio JSON")
     rank_cmd.add_argument("--top", type=_positive_int, help="show only the top N vendors in terminal output")
     rank_cmd.add_argument("--output", help="write ranking to .json, .md, .html, .csv or .xlsx")
@@ -149,6 +174,7 @@ def build_parser() -> argparse.ArgumentParser:
     extract_cmd.add_argument("document")
     extract_cmd.add_argument("--kind", choices=["specification", "vendor"], required=True)
     _add_ifc_options(extract_cmd)
+    _add_xlsx_options(extract_cmd)
     return parser
 
 
@@ -160,6 +186,8 @@ def main(argv: list[str] | None = None) -> int:
             if args.kind == "specification":
                 if _ifc_options_supplied(args):
                     raise ValueError("IFC selection options require --kind vendor")
+                if _xlsx_options_supplied(args):
+                    raise ValueError("--xlsx-sheet requires --kind vendor")
                 items = parse_requirements(args.document)
             else:
                 items = _parse_cli_vendor(args.document, args)
@@ -180,6 +208,8 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit("rank requires at least two vendor inputs")
         if _ifc_options_supplied(args) and not any(Path(vendor).suffix.lower() == ".ifc" for vendor in args.vendors):
             raise SystemExit("IFC selection options require at least one .ifc vendor input")
+        if _xlsx_options_supplied(args) and not any(Path(vendor).suffix.lower() == ".xlsx" for vendor in args.vendors):
+            raise SystemExit("--xlsx-sheet requires at least one .xlsx vendor input")
         reports = []
         for vendor in args.vendors:
             try:
