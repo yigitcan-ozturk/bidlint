@@ -85,15 +85,15 @@ def test_ifc_properties_become_source_traceable_vendor_facts(tmp_path, monkeypat
 
     facts = parse_ifc_facts(path, ifc_class="IfcPump")
     assert [(fact.parameter, fact.raw_value) for fact in facts] == [
-        ("designpressure", "10"),
+        ("design pressure", "10"),
         ("enabled", "true"),
-        ("motorpower", "11 kW"),
+        ("motor power", "11 kW"),
         ("status", "NEW"),
     ]
-    motor = next(fact for fact in facts if fact.parameter == "motorpower")
+    motor = next(fact for fact in facts if fact.parameter == "motor power")
     assert motor.value == 11
     assert motor.unit == "kw"
-    pressure = next(fact for fact in facts if fact.parameter == "designpressure")
+    pressure = next(fact for fact in facts if fact.parameter == "design pressure")
     assert pressure.value == 10
     assert pressure.unit is None
     assert motor.source == SourceRef(
@@ -121,7 +121,7 @@ def test_ifc_guid_and_pset_scope_are_explicit(tmp_path, monkeypatch):
     )
 
     facts = parse_ifc_facts(path, global_id=pump.GlobalId, pset="Pset_PumpCommon")
-    assert [(fact.parameter, fact.raw_value) for fact in facts] == [("flowrate", "125 m3/h")]
+    assert [(fact.parameter, fact.raw_value) for fact in facts] == [("flow rate", "125 m3/h")]
 
     with pytest.raises(ValueError, match="requires --ifc-class or --ifc-guid"):
         parse_ifc_facts(path)
