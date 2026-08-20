@@ -49,4 +49,4 @@
 - [x] repeated explicit header groups without positional guessing
 - [x] reject formula-driven cells instead of trusting potentially stale cached results
 - [ ] mixed PDF / XLSX / IFC CLI ergonomics and documentation hardening
-- [ ] sanitized real-world vendor workbook fixtures
+- [x] sanitized real-world vendor workbook fixtures
