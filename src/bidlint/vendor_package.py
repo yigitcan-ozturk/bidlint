@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from .document_policy import (
+    DocumentClass,
+    classify_documents,
+    is_evidence_class,
+    normalize_evidence_priority,
+    parse_document_class,
+)
 from .ifc import parse_ifc_facts
 from .models import SourceRef, VendorFact
 from .parse import parse_vendor_facts
@@ -21,6 +28,8 @@ class VendorPackage:
     root: Path
     documents: tuple[Path, ...]
     ignored_documents: tuple[Path, ...]
+    document_classes: dict[str, DocumentClass]
+    evidence_priority: tuple[DocumentClass, ...]
     facts: list[VendorFact]
     conflicts: list[VendorFact]
 
@@ -66,13 +75,42 @@ def _conflict_fact(root: Path, parameter: str, facts: list[VendorFact]) -> Vendo
     )
 
 
+def _priority_candidates(
+    candidates: list[VendorFact],
+    document_classes: Mapping[str, DocumentClass | str] | None,
+    evidence_priority: Sequence[DocumentClass | str] | None,
+) -> list[VendorFact]:
+    priority = normalize_evidence_priority(evidence_priority)
+    if not priority or not document_classes:
+        return candidates
+
+    ranks = {document_class: index for index, document_class in enumerate(priority)}
+    ranked: list[tuple[int, VendorFact]] = []
+    for candidate in candidates:
+        if candidate.source is None:
+            continue
+        document_class = document_classes.get(candidate.source.document)
+        if document_class is None:
+            continue
+        parsed = parse_document_class(document_class)
+        if parsed in ranks:
+            ranked.append((ranks[parsed], candidate))
+
+    if not ranked:
+        return candidates
+    best_rank = min(rank for rank, _ in ranked)
+    return [candidate for rank, candidate in ranked if rank == best_rank]
+
+
 def consolidate_package_facts(
     root: str | Path,
     facts: list[VendorFact],
     *,
     aliases: Mapping[str, str] | None = None,
+    document_classes: Mapping[str, DocumentClass | str] | None = None,
+    evidence_priority: Sequence[DocumentClass | str] | None = None,
 ) -> tuple[list[VendorFact], list[VendorFact]]:
-    """Collapse duplicate package evidence and replace conflicts with explicit REVIEW facts."""
+    """Collapse duplicates and apply only explicitly supplied package evidence priority."""
     root_path = Path(root)
     grouped: dict[str, list[VendorFact]] = {}
     for fact in facts:
@@ -82,8 +120,9 @@ def consolidate_package_facts(
     consolidated: list[VendorFact] = []
     conflicts: list[VendorFact] = []
     for parameter, candidates in grouped.items():
-        anchor = candidates[0]
-        if all(_facts_equivalent(anchor, candidate) for candidate in candidates[1:]):
+        preferred = _priority_candidates(candidates, document_classes, evidence_priority)
+        anchor = preferred[0]
+        if all(_facts_equivalent(anchor, candidate) for candidate in preferred[1:]):
             consolidated.append(anchor)
             continue
         conflict = _conflict_fact(root_path, parameter, candidates)
@@ -100,6 +139,8 @@ def parse_vendor_package(
     ifc_pset: str | None = None,
     xlsx_sheet: str | None = None,
     aliases: Mapping[str, str] | None = None,
+    document_classes: Mapping[str, DocumentClass | str] | None = None,
+    evidence_priority: Sequence[DocumentClass | str] | None = None,
 ) -> VendorPackage:
     """Parse supported direct-child vendor documents as one deterministic evidence package."""
     root = Path(path)
@@ -110,20 +151,26 @@ def parse_vendor_package(
         (child for child in root.iterdir() if child.is_file()),
         key=lambda child: (child.name.casefold(), child.name),
     )
+    classifications = classify_documents(children, document_classes)
     documents = tuple(child for child in children if child.suffix.lower() in _SUPPORTED_SUFFIXES)
-    ignored = tuple(child for child in children if child.suffix.lower() not in _SUPPORTED_SUFFIXES)
+    ignored = tuple(child for child in children if classifications[child.name] is DocumentClass.IGNORED)
     if not documents:
         raise ValueError("vendor package contains no supported .pdf, .ifc or .xlsx files")
 
-    has_ifc = any(document.suffix.lower() == ".ifc" for document in documents)
-    has_xlsx = any(document.suffix.lower() == ".xlsx" for document in documents)
+    evidence_documents = tuple(child for child in documents if is_evidence_class(classifications[child.name]))
+    if not evidence_documents:
+        raise ValueError("vendor package contains no documents classified as technical evidence")
+
+    priority = normalize_evidence_priority(evidence_priority)
+    has_ifc = any(document.suffix.lower() == ".ifc" for document in evidence_documents)
+    has_xlsx = any(document.suffix.lower() == ".xlsx" for document in evidence_documents)
     if any(value is not None for value in (ifc_class, ifc_guid, ifc_pset)) and not has_ifc:
-        raise ValueError("IFC selection options require at least one .ifc file in the vendor package")
+        raise ValueError("IFC selection options require at least one evidence .ifc file in the vendor package")
     if xlsx_sheet is not None and not has_xlsx:
-        raise ValueError("--xlsx-sheet requires at least one .xlsx file in the vendor package")
+        raise ValueError("--xlsx-sheet requires at least one evidence .xlsx file in the vendor package")
 
     facts: list[VendorFact] = []
-    for document in documents:
+    for document in evidence_documents:
         suffix = document.suffix.lower()
         if suffix == ".pdf":
             facts.extend(parse_vendor_facts(document))
@@ -139,11 +186,19 @@ def parse_vendor_package(
         else:
             facts.extend(parse_xlsx_vendor_facts(document, sheet=xlsx_sheet))
 
-    consolidated, conflicts = consolidate_package_facts(root, facts, aliases=aliases)
+    consolidated, conflicts = consolidate_package_facts(
+        root,
+        facts,
+        aliases=aliases,
+        document_classes=classifications,
+        evidence_priority=priority,
+    )
     return VendorPackage(
         root=root,
         documents=documents,
         ignored_documents=ignored,
+        document_classes=classifications,
+        evidence_priority=priority,
         facts=consolidated,
         conflicts=conflicts,
     )

@@ -58,8 +58,8 @@
 - [x] turn conflicting package evidence into explicit provenance-preserving `REVIEW` facts instead of choosing a winner
 - [x] directory dispatch through the existing vendor-input boundary without changing the deterministic evaluator
 - [ ] thread project-specific terminology aliases into CLI package consolidation
-- [ ] explicit document classification for specification, datasheet, compliance schedule, technical offer and ignored documents
-- [ ] explicit evidence-priority policy with user override rather than hidden source precedence
+- [x] explicit document classification for specification, datasheet, compliance schedule, technical offer and ignored documents
+- [x] explicit evidence-priority policy with user override rather than hidden source precedence
 - [ ] fully scoped mixed-package ranking when IFC/XLSX selectors are required
 - [ ] package-level audit surface for all contributing and conflicting evidence
 - [ ] sanitized pump, motor, valve, HVAC and electrical multi-document package fixtures
