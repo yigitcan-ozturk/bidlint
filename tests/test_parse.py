@@ -35,6 +35,22 @@ def make_sparse_positioned_pdf(path: Path, rows: list[list[tuple[int, str]]]):
     c.save()
 
 
+def make_boxed_table_pdf(
+    path: Path,
+    rows: list[tuple[list[tuple[int, int]], list[tuple[int, str]]]],
+):
+    boundaries = [40, 240, 320, 420, 510]
+    c = canvas.Canvas(str(path), pagesize=A4)
+    y = 800
+    for spans, texts in rows:
+        for start, end in spans:
+            c.rect(boundaries[start], y - 8, boundaries[end] - boundaries[start], 20, stroke=1, fill=0)
+        for x, text in texts:
+            c.drawString(x, y, text)
+        y -= 24
+    c.save()
+
+
 def test_pdf_requirement_extraction(tmp_path):
     path = tmp_path / "spec.pdf"
     make_pdf(path, ["6.4 Pumps", "Motor efficiency shall be minimum 90 %", "Noise level must not exceed 70 dB"])
@@ -240,6 +256,51 @@ def test_coordinate_sparse_table_rejects_fragment_near_column_boundary(tmp_path)
         [
             [(50, "Parameter"), (250, "Unit"), (330, "Required"), (430, "Offered")],
             [(50, "Motor power"), (250, "kW"), (380, "11")],
+        ],
+    )
+    assert parse_vendor_facts(path) == []
+
+
+def test_explicit_merged_intermediate_cells_keep_parameter_and_offered_fact(tmp_path):
+    path = tmp_path / "merged-middle.pdf"
+    header_spans = [(0, 1), (1, 2), (2, 3), (3, 4)]
+    make_boxed_table_pdf(
+        path,
+        [
+            (header_spans, [(50, "Parameter"), (250, "Unit"), (330, "Required"), (430, "Offered")]),
+            ([(0, 1), (1, 3), (3, 4)], [(50, "Motor power"), (260, "kW / >= 10"), (430, "11")]),
+            (header_spans, [(50, "Design pressure"), (250, "bar"), (330, ">= 10"), (430, "10")]),
+        ],
+    )
+    facts = parse_vendor_facts(path)
+    assert [(fact.parameter, fact.raw_value) for fact in facts] == [
+        ("motor power", "11"),
+        ("design pressure", "10 bar"),
+    ]
+    assert facts[0].unit is None
+
+
+def test_explicit_merge_touching_offered_column_is_rejected(tmp_path):
+    path = tmp_path / "merged-offered.pdf"
+    header_spans = [(0, 1), (1, 2), (2, 3), (3, 4)]
+    make_boxed_table_pdf(
+        path,
+        [
+            (header_spans, [(50, "Parameter"), (250, "Unit"), (330, "Required"), (430, "Offered")]),
+            ([(0, 1), (1, 2), (2, 4)], [(50, "Motor power"), (250, "kW"), (350, ">= 10 / 11")]),
+        ],
+    )
+    assert parse_vendor_facts(path) == []
+
+
+def test_explicit_merge_touching_parameter_column_is_rejected(tmp_path):
+    path = tmp_path / "merged-parameter.pdf"
+    header_spans = [(0, 1), (1, 2), (2, 3), (3, 4)]
+    make_boxed_table_pdf(
+        path,
+        [
+            (header_spans, [(50, "Parameter"), (250, "Unit"), (330, "Required"), (430, "Offered")]),
+            ([(0, 2), (2, 3), (3, 4)], [(50, "Motor power / kW"), (330, ">= 10"), (430, "11")]),
         ],
     )
     assert parse_vendor_facts(path) == []
