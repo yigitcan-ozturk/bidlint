@@ -40,6 +40,24 @@ _LABEL_ONLY = re.compile(r"^\s*([^:]{2,80}?)\s*:\s*$")
 _TWO_COLUMN = re.compile(r"^\s*(.{2,80}?)(?:\t+| {2,})(\S.*?)\s*$")
 _NUMERIC_VALUE = re.compile(r"^\s*(-?\d+(?:\.\d+)?)\s*([A-Za-z0-9%°/^\-²³]+)?\s*$")
 _SECTION = re.compile(r"^\s*((?:\d+\.)+\d+|\d+(?:\.\d+){1,4})\s+(.+)$")
+_COLUMN_GAP = re.compile(r"\s{2,}")
+
+_PARAMETER_HEADERS = {
+    "parameter",
+    "property",
+    "description",
+    "technical parameter",
+    "item",
+}
+_UNIT_HEADERS = {"unit", "units"}
+_OFFERED_HEADERS = {
+    "offered",
+    "offered value",
+    "vendor value",
+    "supplier value",
+    "value",
+}
+_TABLE_TERMINATORS = {"note", "notes", "remark", "remarks", "general notes"}
 
 _STOPWORDS = {
     "the",
@@ -66,6 +84,8 @@ _STOPWORDS = {
     "and",
     "with",
 }
+
+TableHeader = tuple[int, int | None, int, int]
 
 
 def _normalize_unit(unit: str | None) -> str | None:
@@ -147,6 +167,75 @@ def _make_vendor_fact(path: Path, page: PageText, line_no: int, label: str, raw_
     )
 
 
+def _split_layout_columns(line: str) -> list[str]:
+    return [cell.strip() for cell in _COLUMN_GAP.split(line.strip()) if cell.strip()]
+
+
+def _normalize_header(cell: str) -> str:
+    return " ".join(cell.lower().replace("_", " ").split())
+
+
+def _table_header(columns: list[str]) -> TableHeader | None:
+    normalized = [_normalize_header(cell) for cell in columns]
+    parameter_index = next((i for i, cell in enumerate(normalized) if cell in _PARAMETER_HEADERS), None)
+    offered_index = next((i for i, cell in enumerate(normalized) if cell in _OFFERED_HEADERS), None)
+    if parameter_index is None or offered_index is None or parameter_index == offered_index:
+        return None
+
+    unit_index = next((i for i, cell in enumerate(normalized) if cell in _UNIT_HEADERS), None)
+    return parameter_index, unit_index, offered_index, len(columns)
+
+
+def _table_row_fact(
+    path: Path,
+    page: PageText,
+    line_no: int,
+    columns: list[str],
+    header: TableHeader,
+) -> VendorFact | None:
+    parameter_index, unit_index, offered_index, header_width = header
+    if len(columns) < header_width:
+        return None
+
+    label = columns[parameter_index].strip()
+    if _normalize_header(label) in _TABLE_TERMINATORS or not _looks_like_label(label):
+        return None
+
+    raw_value = columns[offered_index].strip()
+    if not raw_value:
+        return None
+
+    if unit_index is not None and unit_index < len(columns):
+        unit = columns[unit_index].strip()
+        value, parsed_unit = _parse_numeric_value(raw_value)
+        if value is not None and parsed_unit is None and unit:
+            raw_value = f"{raw_value} {unit}"
+
+    return _make_vendor_fact(path, page, line_no, label, raw_value)
+
+
+def _paired_layout_facts(
+    path: Path,
+    page: PageText,
+    line_no: int,
+    columns: list[str],
+) -> list[VendorFact] | None:
+    """Parse two numeric label/value pairs rendered on the same visual row."""
+    if len(columns) != 4:
+        return None
+
+    label_a, value_a, label_b, value_b = columns
+    if not (_looks_like_label(label_a) and _looks_like_label(label_b)):
+        return None
+    if not (_NUMERIC_VALUE.fullmatch(value_a) and _NUMERIC_VALUE.fullmatch(value_b)):
+        return None
+
+    return [
+        _make_vendor_fact(path, page, line_no, label_a, value_a),
+        _make_vendor_fact(path, page, line_no, label_b, value_b),
+    ]
+
+
 def parse_requirements(path: str | Path) -> list[Requirement]:
     path = Path(path)
     pages = extract_pages(path)
@@ -202,19 +291,54 @@ def parse_vendor_facts(path: str | Path) -> list[VendorFact]:
     - two-column rows separated by a tab or at least two spaces
     - ``Parameter:`` followed by a value on the next non-empty line
     - a label followed by a *numeric + unit* value on the next line
+    - layout-preserved tables with explicit parameter/value headers
+    - two numeric label/value pairs rendered side-by-side on one visual row
 
-    The paired-line fallback is conservative so ordinary headings and prose do
-    not silently become vendor facts.
+    Table reconstruction remains conservative: only explicit headers or fully
+    numeric side-by-side pairs are accepted. Ambiguous 3+ column rows are
+    skipped rather than flattened into false facts.
     """
     path = Path(path)
-    pages = extract_pages(path)
+    pages = extract_pages(path, layout=True)
     facts: list[VendorFact] = []
 
     for page in pages:
         lines = _split_lines(page)
         index = 0
+        active_table: TableHeader | None = None
         while index < len(lines):
             line_no, line = lines[index]
+            columns = _split_layout_columns(line)
+
+            header = _table_header(columns)
+            if header is not None:
+                active_table = header
+                index += 1
+                continue
+
+            if active_table is not None:
+                table_fact = _table_row_fact(path, page, line_no, columns, active_table)
+                if table_fact is not None:
+                    facts.append(table_fact)
+                    index += 1
+                    continue
+
+                active_table = None
+                if columns and _normalize_header(columns[0]) in _TABLE_TERMINATORS:
+                    index += 1
+                    continue
+
+            paired = _paired_layout_facts(path, page, line_no, columns)
+            if paired is not None:
+                facts.extend(paired)
+                index += 1
+                continue
+
+            # A visually separated 3+ column row without a recognized table
+            # schema is ambiguous. Do not flatten it into a fake two-column fact.
+            if len(columns) >= 3:
+                index += 1
+                continue
 
             structured = _parse_structured_vendor_line(line)
             if structured:
