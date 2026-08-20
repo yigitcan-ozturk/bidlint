@@ -11,6 +11,7 @@ from .portfolio import portfolio_to_html, portfolio_to_markdown, rank_reports, w
 from .report import portfolio_to_json, to_html, to_json, to_markdown, write_csv
 from .scorecard import write_supplier_scorecard_signal
 from .terminology import load_alias_file
+from .xlsx import write_portfolio_xlsx
 
 
 def _summary(report) -> str:
@@ -61,8 +62,10 @@ def _write_portfolio(reports, output: str) -> None:
         path.write_text(portfolio_to_html(reports), encoding="utf-8")
     elif suffix == ".csv":
         write_portfolio_csv(reports, path)
+    elif suffix == ".xlsx":
+        write_portfolio_xlsx(reports, path)
     else:
-        raise SystemExit("rank --output must end in .json, .md, .html or .csv")
+        raise SystemExit("rank --output must end in .json, .md, .html, .csv or .xlsx")
 
 
 def _add_matching_options(command: argparse.ArgumentParser) -> None:
@@ -140,7 +143,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_ifc_options(rank_cmd)
     rank_cmd.add_argument("--json", action="store_true", help="print portfolio JSON")
     rank_cmd.add_argument("--top", type=_positive_int, help="show only the top N vendors in terminal output")
-    rank_cmd.add_argument("--output", help="write ranking to .json, .md, .html or .csv")
+    rank_cmd.add_argument("--output", help="write ranking to .json, .md, .html, .csv or .xlsx")
 
     extract_cmd = sub.add_parser("extract", help="inspect extracted requirements or vendor facts")
     extract_cmd.add_argument("document")
