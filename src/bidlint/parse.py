@@ -294,7 +294,7 @@ def _positioned_row_cells(row: PositionedRow, anchors: tuple[float, ...]) -> lis
     if len(anchors) < 2 or len(row.fragments) == 0:
         return None
 
-    boundaries = tuple((left + right) / 2 for left, right in zip(anchors, anchors[1:], strict=True))
+    boundaries = tuple((left + right) / 2 for left, right in zip(anchors, anchors[1:]))
     cells = [""] * len(anchors)
 
     for fragment in row.fragments:
