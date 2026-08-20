@@ -87,6 +87,21 @@ This means `supplier rated output = 11 kW` in one package document and `motor po
 
 Aliases do not introduce fuzzy grouping, hidden precedence or additional confidence.
 
+## Mixed-package ranking selectors
+
+`rank` may combine direct vendor files and package directories while using global IFC/XLSX selector options.
+
+Selector validation looks inside each package at direct-child documents that are actually classified as technical evidence. A copied `Employer-Specification.ifc` or `commercial-pricing.xlsx` file does not make a package eligible for `--ifc-*` or `--xlsx-sheet`.
+
+Selectors are then scoped per vendor input:
+
+- IFC selectors are passed only to direct `.ifc` inputs and packages containing evidence-classified `.ifc` documents.
+- `--xlsx-sheet` is passed only to direct `.xlsx` inputs and packages containing evidence-classified `.xlsx` documents.
+- PDF-only packages do not receive unrelated IFC/XLSX selectors.
+- A package containing both evidence IFC and XLSX files may receive both selector families.
+
+This avoids a global selector causing unrelated suppliers in the same ranking run to fail validation.
+
 ## Duplicate evidence
 
 Facts are grouped by the existing conservative terminology canonicalization.
@@ -154,7 +169,6 @@ Current deliberate limits include:
 
 - only direct-child documents are considered
 - document classification uses deterministic filename rules plus exact programmatic overrides; package manifest and CLI override surfaces are not added yet
-- mixed package ranking that requires global IFC/XLSX selectors is still being hardened
 - package-level audit output beyond the existing finding provenance is still planned
 
 See [`ROADMAP.md`](../ROADMAP.md) for the remaining v0.7 work.

@@ -60,7 +60,7 @@
 - [x] thread project-specific terminology aliases into CLI package consolidation
 - [x] explicit document classification for specification, datasheet, compliance schedule, technical offer and ignored documents
 - [x] explicit evidence-priority policy with user override rather than hidden source precedence
-- [ ] fully scoped mixed-package ranking when IFC/XLSX selectors are required
+- [x] fully scoped mixed-package ranking when IFC/XLSX selectors are required
 - [ ] package-level audit surface for all contributing and conflicting evidence
 - [ ] sanitized pump, motor, valve, HVAC and electrical multi-document package fixtures
 - [ ] freeze and publish stable v0.7.0 release
