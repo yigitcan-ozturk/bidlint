@@ -49,5 +49,5 @@
 - [x] row/sheet provenance preserved in normal compliance findings
 - [x] conservative rejection of formulas, macros, external links, merged cells and ambiguous worksheet/header layouts
 - [x] standard-library OOXML parsing with no spreadsheet runtime dependency
-- [ ] merge feature branch with full Python 3.11–3.13 CI green
-- [ ] freeze and publish stable v0.6.0 release
+- [x] merge feature branch with full Python 3.11–3.13 CI green
+- [x] freeze and publish stable v0.6.0 release

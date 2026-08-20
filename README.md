@@ -13,9 +13,9 @@
 
 It turns document evidence into explicit `PASS / DEVIATION / MISSING / REVIEW` findings, keeps source provenance, performs deterministic engineering comparisons where possible, and refuses to fabricate certainty where it cannot.
 
-> Latest stable release: **v0.5.0**
+> Latest stable release: **v0.6.0**
 >
-> Development version: **v0.6.0.dev0** adds explicit formula-free XLSX vendor inputs.
+> `v0.6.0` adds explicit formula-free XLSX vendor inputs while preserving the deterministic evaluator and provenance model.
 
 ```text
 Specification PDF ──> requirements ──┐
@@ -156,7 +156,7 @@ See [`docs/VENDOR_PARSING.md`](docs/VENDOR_PARSING.md).
 
 ### XLSX vendor inputs
 
-The `v0.6.0.dev0` development line can read an explicit formula-free XLSX offer table directly into the existing `VendorFact` model without adding a spreadsheet runtime dependency:
+`v0.6.0` can read an explicit formula-free XLSX offer table directly into the existing `VendorFact` model without adding a spreadsheet runtime dependency:
 
 ```bash
 bidlint compare specification.pdf supplier-offer.xlsx
@@ -409,7 +409,7 @@ The limits are explicit by design:
 
 ## Roadmap
 
-See [`ROADMAP.md`](ROADMAP.md). `v0.5.0` is the latest stable engineering-ecosystem release. The `v0.6.0.dev0` development milestone adds explicit XLSX vendor input while preserving the same deterministic evaluator and provenance model.
+See [`ROADMAP.md`](ROADMAP.md). `v0.6.0` is the latest stable release and adds explicit XLSX vendor input while preserving the same deterministic evaluator and provenance model.
 
 Future work should be deliberately scoped rather than weakening the deterministic evidence-first boundary.
 
