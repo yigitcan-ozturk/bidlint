@@ -20,7 +20,7 @@ class PositionedText:
     y: float
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class PositionedRectangle:
     x0: float
     y0: float
