@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Added
+
+- layout-preserving PDF extraction for vendor datasheets using pypdf layout mode
+- deterministic header-driven parsing for tables with explicit parameter, unit and offered-value columns
+- conservative parsing for two numeric parameter/value pairs rendered side-by-side on one visual row
+- regression coverage for table footers, unrelated multi-column metadata and end-to-end compliance evaluation
+
+### Changed
+
+- ambiguous unrecognized 3+ column vendor rows are skipped instead of being flattened into false two-column facts
+- development version advanced to `0.2.1.dev0`
+
 ## 0.2.0 — 2026-08-19
 
 ### Added

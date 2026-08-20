@@ -16,7 +16,9 @@
 - [x] explicit uncertainty rules for missing, incompatible and ambiguous evidence
 
 ## v0.2.x — hardening and document coverage
-- [ ] complex PDF table and multi-column layout reconstruction
+- [x] layout-preserved PDF table rows with explicit parameter/value headers
+- [x] side-by-side numeric parameter/value reconstruction for common technical datasheets
+- [ ] merged/wrapped table cells and advanced multi-column layout reconstruction
 - [ ] broader engineering unit normalization
 - [ ] additional sanitized real-world datasheet fixtures
 - [ ] batch comparison ergonomics and export refinements
