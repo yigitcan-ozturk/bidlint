@@ -1,6 +1,6 @@
 # Vendor datasheet parsing
 
-`bidlint` extracts vendor facts conservatively. The parser supports a small set of explicit layouts that are common in technical datasheets and now preserves horizontal PDF layout when it can use that structure safely.
+`bidlint` extracts vendor facts conservatively. The parser supports a small set of explicit layouts that are common in technical datasheets and preserves horizontal PDF layout when it can use that structure safely.
 
 ## Supported layouts
 
@@ -54,6 +54,20 @@ Design pressure    bar         >= 10           10
 `bidlint` reads the `Offered` column rather than the requirement/reference column. When the numeric offered value and its unit are in separate cells, they are combined before deterministic numeric parsing.
 
 Recognized parameter headers include `Parameter`, `Property`, `Description`, `Technical Parameter`, and `Item`. Recognized value headers include `Offered`, `Offered Value`, `Vendor Value`, `Supplier Value`, and `Value`.
+
+### Coordinate-aligned sparse table row
+
+Some PDFs visually leave an intermediate table cell blank. Plain whitespace splitting then shifts later cells left and can make a valid offered value look like the wrong column.
+
+```text
+Parameter          Unit        Required        Offered
+Motor power        kW                          11
+Design pressure    bar         >= 10           10
+```
+
+For an already recognized table, `bidlint` performs a supplementary positioned-text pass. The header cell x-positions become explicit column anchors. A sparse row is reconstructed only when the parameter and offered cells align closely enough to those anchors and at least one intermediate cell is visibly absent.
+
+This coordinate pass is a fallback, not the primary parser. It does **not** infer a value merely because it is somewhere between two columns. Fragments close to a column boundary are rejected instead of assigned by guesswork. A genuinely blank `Unit` cell also remains blank; no unit is invented from the surrounding table.
 
 ### Explicit wrapped offered value
 
@@ -110,7 +124,7 @@ It is **not** interpreted as the numeric value `316`.
 
 ## Multi-column safety
 
-A visually separated row with three or more columns is not flattened into a two-column fact unless it matches a recognized table schema or the explicit side-by-side numeric pattern.
+A visually separated row with three or more columns is not flattened into a two-column fact unless it matches a recognized table schema, the explicit side-by-side numeric pattern, or a coordinate-aligned sparse row under an active explicit header.
 
 Table state is also dropped when a row no longer matches the active schema. Common `Note` / `Notes` / `Remark` rows terminate the table instead of becoming vendor parameters.
 
@@ -118,7 +132,9 @@ Wrapped-cell handling follows the same evidence rule: a numeric continuation mus
 
 ## Deliberate limits
 
-- arbitrary merged cells are not reconstructed
+- arbitrary merged cells are not reconstructed yet
+- coordinate evidence is accepted only under an explicit recognized table header
+- fragments too far from a header anchor or too close to a boundary are not assigned by positional guessing
 - unmarked wrapped labels are not guessed
 - wrapped qualitative offered values are not inferred
 - arbitrary tables without recognizable headers are not guessed
