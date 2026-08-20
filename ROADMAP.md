@@ -51,3 +51,34 @@
 - [x] standard-library OOXML parsing with no spreadsheet runtime dependency
 - [x] merge feature branch with full Python 3.11–3.13 CI green
 - [x] freeze and publish stable v0.6.0 release
+
+## v0.7 — real-world bid intake
+- [x] deterministic direct-child multi-file vendor packages for PDF / XLSX / explicitly scoped IFC evidence
+- [x] consolidate equivalent duplicate evidence across compatible engineering units
+- [x] turn conflicting package evidence into explicit provenance-preserving `REVIEW` facts instead of choosing a winner
+- [x] directory dispatch through the existing vendor-input boundary without changing the deterministic evaluator
+- [x] thread project-specific terminology aliases into CLI package consolidation
+- [x] explicit document classification for specification, datasheet, compliance schedule, technical offer and ignored documents
+- [x] explicit evidence-priority policy with user override rather than hidden source precedence
+- [x] fully scoped mixed-package ranking when IFC/XLSX selectors are required
+- [x] package-level audit surface for all contributing and conflicting evidence
+- [x] sanitized pump, motor, valve, HVAC and electrical multi-document package fixtures
+- [x] freeze and publish stable v0.7.0 release
+
+## v0.8 — procurement workflow
+- [ ] mandatory technical knockout criteria
+- [ ] bidder clarification list and unanswered requirement register
+- [ ] deviation register and review queue
+- [ ] procurement-ready package ranking and supplier-scorecard hand-off
+
+## v0.9 — production hardening
+- [ ] malformed and adversarial PDF / XLSX / IFC regression suite
+- [ ] deterministic large-package performance benchmarks
+- [ ] structured CLI exit codes and error contracts
+- [ ] package build, compatibility and security hardening
+
+## v1.0 — stable contract
+- [ ] freeze CLI, JSON, finding and VendorFact compatibility contracts
+- [ ] freeze deterministic status and scoring semantics
+- [ ] publish backward-compatibility and versioning policy
+- [ ] release bidlint 1.0.0

@@ -1,0 +1,211 @@
+[
+  {
+    "name": "pump_package",
+    "aliases": {
+      "supplier flow": "flow rate"
+    },
+    "documents": [
+      {
+        "name": "a-compliance.xlsx",
+        "type": "xlsx",
+        "rows": [
+          ["Supplier Flow", "m3/h", 125],
+          ["Motor Power", "kW", 11]
+        ]
+      },
+      {
+        "name": "b-pump-datasheet.pdf",
+        "type": "pdf",
+        "rows": [
+          ["Flow rate", "m3/h", ">= 100", "125"],
+          ["Motor power", "kW", ">= 10", "11"]
+        ]
+      },
+      {
+        "name": "c-technical-offer.pdf",
+        "type": "pdf",
+        "rows": [
+          ["Flow rate", "m3/h", ">= 100", "125"],
+          ["Motor power", "kW", ">= 10", "11"]
+        ]
+      }
+    ],
+    "expected": {
+      "conflicts": 0,
+      "dispositions": {
+        "selected": 2,
+        "equivalent-duplicate": 4
+      }
+    }
+  },
+  {
+    "name": "motor_package",
+    "evidence_priority": [
+      "compliance-schedule",
+      "datasheet",
+      "technical-offer"
+    ],
+    "documents": [
+      {
+        "name": "a-motor-datasheet.pdf",
+        "type": "pdf",
+        "rows": [
+          ["Motor power", "kW", ">= 10", "11"],
+          ["Rated current", "A", "<= 20", "18.5"]
+        ]
+      },
+      {
+        "name": "b-compliance.xlsx",
+        "type": "xlsx",
+        "rows": [
+          ["Motor Power", "kW", 12],
+          ["Rated Current", "A", 18.5]
+        ]
+      },
+      {
+        "name": "c-technical-offer.pdf",
+        "type": "pdf",
+        "rows": [
+          ["Motor power", "kW", ">= 10", "11"],
+          ["Rated current", "A", "<= 20", "18.5"]
+        ]
+      }
+    ],
+    "expected": {
+      "conflicts": 0,
+      "dispositions": {
+        "selected": 2,
+        "lower-priority": 4
+      },
+      "selected_sources": ["b-compliance.xlsx"]
+    }
+  },
+  {
+    "name": "valve_package",
+    "evidence_priority": [
+      "compliance-schedule",
+      "datasheet"
+    ],
+    "documents": [
+      {
+        "name": "a-compliance.xlsx",
+        "type": "xlsx",
+        "rows": [
+          ["Design Pressure", "bar", 10],
+          ["Mass", "kg", 72]
+        ]
+      },
+      {
+        "name": "b-compliance.xlsx",
+        "type": "xlsx",
+        "rows": [
+          ["Design Pressure", "bar", 12],
+          ["Mass", "kg", 72]
+        ]
+      },
+      {
+        "name": "c-valve-datasheet.pdf",
+        "type": "pdf",
+        "rows": [
+          ["Design pressure", "bar", ">= 10", "10"],
+          ["Mass", "kg", "<= 80", "72"]
+        ]
+      }
+    ],
+    "expected": {
+      "conflicts": 1,
+      "dispositions": {
+        "selected": 1,
+        "equivalent-duplicate": 1,
+        "conflict": 2,
+        "lower-priority": 2
+      }
+    }
+  },
+  {
+    "name": "hvac_package",
+    "aliases": {
+      "supply air volume": "flow rate",
+      "fan rated power": "motor power"
+    },
+    "documents": [
+      {
+        "name": "a-hvac-datasheet.pdf",
+        "type": "pdf",
+        "rows": [
+          ["Flow rate", "m3/s", ">= 3", "3.5"],
+          ["Motor power", "kW", "<= 8", "7.5"]
+        ]
+      },
+      {
+        "name": "b-compliance.xlsx",
+        "type": "xlsx",
+        "rows": [
+          ["Supply Air Volume", "m3/h", 12600],
+          ["Fan Rated Power", "W", 7500]
+        ]
+      },
+      {
+        "name": "Employer-Specification.pdf",
+        "type": "pdf",
+        "rows": [
+          ["Flow rate", "m3/s", ">= 4", "4"]
+        ]
+      },
+      {
+        "name": "commercial-pricing.txt",
+        "type": "text",
+        "content": "Synthetic commercial information. Not technical evidence."
+      }
+    ],
+    "expected": {
+      "conflicts": 0,
+      "dispositions": {
+        "selected": 2,
+        "equivalent-duplicate": 2
+      },
+      "ignored_documents": ["commercial-pricing.txt"],
+      "specification_documents": ["Employer-Specification.pdf"]
+    }
+  },
+  {
+    "name": "electrical_package",
+    "documents": [
+      {
+        "name": "a-electrical-datasheet.pdf",
+        "type": "pdf",
+        "rows": [
+          ["Supply voltage", "V", "400", "400"],
+          ["Rated current", "A", "<= 20", "18.5"],
+          ["Frequency", "Hz", "50", "50"]
+        ]
+      },
+      {
+        "name": "b-compliance.xlsx",
+        "type": "xlsx",
+        "rows": [
+          ["Supply Voltage", "V", 400],
+          ["Rated Current", "A", 20],
+          ["Frequency", "Hz", 50]
+        ]
+      },
+      {
+        "name": "c-technical-offer.pdf",
+        "type": "pdf",
+        "rows": [
+          ["Supply voltage", "V", "400", "400"],
+          ["Rated current", "A", "<= 20", "18.5"],
+          ["Frequency", "Hz", "50", "50"]
+        ]
+      }
+    ],
+    "expected": {
+      "conflicts": 1,
+      "dispositions": {
+        "selected": 2,
+        "equivalent-duplicate": 4,
+        "conflict": 3
+      }
+    }
+  }
+]

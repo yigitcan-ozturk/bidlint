@@ -9,18 +9,18 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-`bidlint` is an open-source technical bid compliance engine for comparing engineering specifications with vendor datasheets, bids, submittals, explicit XLSX offer tables and explicitly scoped IFC property inputs.
+`bidlint` is an open-source technical bid compliance engine for comparing engineering specifications with vendor datasheets, bids, submittals, multi-document vendor packages, explicit XLSX offer tables and explicitly scoped IFC property inputs.
 
 It turns document evidence into explicit `PASS / DEVIATION / MISSING / REVIEW` findings, keeps source provenance, performs deterministic engineering comparisons where possible, and refuses to fabricate certainty where it cannot.
 
-> Latest stable release: **v0.6.0**
+> Latest stable release: **v0.7.0**
 >
-> `v0.6.0` adds explicit formula-free XLSX vendor inputs while preserving the deterministic evaluator and provenance model.
+> `v0.7.0` adds deterministic multi-document vendor packages with explicit classification, opt-in evidence priority and package-level auditability.
 
 ```text
 Specification PDF ──> requirements ──┐
                                      ├──> terminology + unit-aware rules ──> findings
-Vendor PDF / XLSX / IFC ─> facts ────┘                              │
+Vendor file / package ──> facts ─────┘                              │
                                                                     ├──> JSON / CSV / Markdown / HTML / XLSX
 Multiple vendors ────────────────────────────────────────────────────└──> technical bid tabulation
 ```
@@ -153,6 +153,28 @@ Layout-preserved tables with explicit headers, coordinate-aligned sparse rows, s
 Descriptive material grades such as `316L stainless steel` stay qualitative; they are not silently converted into a numeric value of `316`.
 
 See [`docs/VENDOR_PARSING.md`](docs/VENDOR_PARSING.md).
+
+### Multi-document vendor packages
+
+`v0.7.0` can treat a supplier directory as one deterministic evidence package:
+
+```text
+Supplier-A/
+├── compliance-schedule.xlsx
+├── pump-datasheet.pdf
+├── technical-offer.pdf
+└── model.ifc
+```
+
+```bash
+bidlint compare specification.pdf Supplier-A/
+```
+
+Package files are classified explicitly as `specification`, `datasheet`, `compliance-schedule`, `technical-offer` or `ignored`. Copied specifications and ignored/commercial material do not become vendor evidence. Equivalent facts can collapse through the existing terminology and unit rules; unresolved conflicts become provenance-preserving `REVIEW` evidence instead of silently choosing a document.
+
+Evidence priority is explicit and opt-in. Package audit data records selected, equivalent-duplicate, conflict and lower-priority facts without changing the deterministic evaluator.
+
+See [`docs/VENDOR_PACKAGES.md`](docs/VENDOR_PACKAGES.md).
 
 ### XLSX vendor inputs
 
@@ -355,6 +377,7 @@ Specification PDF ──> requirement parser ───────────�
 Vendor PDF ────────> vendor parser ────────────────────────────┤
 Vendor XLSX ───────> explicit OOXML table adapter ─> VendorFact┤
 IFC element ───────> property adapter ──> VendorFact ──────────┤
+Vendor package ────> classification + consolidation ───────────┤
 optional provider ─> evidence validator ───────────────────────┤
                                                               ▼
                                                    terminology matcher
@@ -377,6 +400,7 @@ Detailed references:
 - [`Data contract`](docs/DATA_CONTRACT.md)
 - [`Engineering units`](docs/ENGINEERING_UNITS.md)
 - [`Vendor parsing`](docs/VENDOR_PARSING.md)
+- [`Vendor packages`](docs/VENDOR_PACKAGES.md)
 - [`XLSX vendor inputs`](docs/XLSX_VENDOR_INPUT.md)
 - [`IFC inputs`](docs/IFC.md)
 - [`Optional structured extraction`](docs/AI_EXTRACTION.md)
@@ -398,6 +422,9 @@ The limits are explicit by design:
 - terminology aliases are conservative unless the user provides a project-specific mapping
 - no optional AI/model provider implementation is bundled in the core package
 - provider evidence validation proves page-local text presence, not semantic correctness
+- vendor packages consider direct-child documents only; nested directories are not traversed
+- package document classification is deterministic and filename-based unless an exact programmatic override is supplied
+- package evidence priority is explicit and opt-in; no hidden default hierarchy is inferred
 - XLSX vendor input requires explicit parameter/offered headers and does not evaluate formulas or reconstruct merged cells
 - multiple visible XLSX worksheets require explicit `--xlsx-sheet` selection
 - IFC input is property-based only; geometry is not evaluated
@@ -409,7 +436,7 @@ The limits are explicit by design:
 
 ## Roadmap
 
-See [`ROADMAP.md`](ROADMAP.md). `v0.6.0` is the latest stable release and adds explicit XLSX vendor input while preserving the same deterministic evaluator and provenance model.
+See [`ROADMAP.md`](ROADMAP.md). `v0.7.0` is the latest stable release and adds deterministic multi-document vendor intake while preserving the same deterministic evaluator and provenance model.
 
 Future work should be deliberately scoped rather than weakening the deterministic evidence-first boundary.
 
