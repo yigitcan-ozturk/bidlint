@@ -1,3 +1,5 @@
+import pytest
+
 from bidlint.compare import compare
 from bidlint.models import Requirement, SourceRef, Status, VendorFact
 from bidlint.units import canonical_unit, convert_value
@@ -113,6 +115,53 @@ def test_flow_conversion_supports_litres_per_minute():
         "vendor.pdf",
     )
     assert report.findings[0].status == Status.PASS
+
+
+def test_electrical_conversion_passes_end_to_end():
+    report = compare(
+        [req("supply voltage", ">=", 0.4, "kv")],
+        [fact("supply voltage", 400, "v")],
+        "spec.pdf",
+        "vendor.pdf",
+    )
+    finding = report.findings[0]
+    assert finding.status == Status.PASS
+    assert "400v (= 0.4kv)" in finding.reason
+
+
+def test_temperature_conversion_is_affine_and_explicit():
+    report = compare(
+        [req("operating temperature", "<=", 40, "°c")],
+        [fact("operating temperature", 104, "°f")],
+        "spec.pdf",
+        "vendor.pdf",
+    )
+    finding = report.findings[0]
+    assert finding.status == Status.PASS
+    assert "104°f (= 40°c)" in finding.reason
+    assert convert_value(0, "°c", "k") == pytest.approx(273.15)
+    assert convert_value(32, "°f", "°c") == pytest.approx(0)
+
+
+def test_extended_linear_unit_families():
+    assert convert_value(2500, "mA", "A") == pytest.approx(2.5)
+    assert convert_value(0.05, "kHz", "Hz") == pytest.approx(50)
+    assert convert_value(0.4, "MVA", "kVA") == pytest.approx(400)
+    assert convert_value(1, "psi", "kPa") == pytest.approx(6.894757293168)
+    assert convert_value(12, "in", "mm") == pytest.approx(304.8)
+    assert convert_value(1, "t", "kg") == pytest.approx(1000)
+    assert convert_value(2.5, "kN", "N") == pytest.approx(2500)
+
+
+def test_new_aliases_remain_conservative():
+    assert canonical_unit("kilovolt") == "kv"
+    assert canonical_unit("rev/min") == "rpm"
+    assert canonical_unit("metric tonne") == "t"
+    assert canonical_unit("PSIG") == "psig"
+    assert convert_value(10, "psig", "bar") is None
+    assert convert_value(400, "v", "a") is None
+    assert convert_value(10, "kw", "kva") is None
+    assert convert_value(68, "f", "°c") is None
 
 
 def test_incompatible_dimensions_remain_review():

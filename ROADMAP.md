@@ -19,7 +19,7 @@
 - [x] layout-preserved PDF table rows with explicit parameter/value headers
 - [x] side-by-side numeric parameter/value reconstruction for common technical datasheets
 - [ ] merged/wrapped table cells and advanced multi-column layout reconstruction
-- [ ] broader engineering unit normalization
+- [x] broader engineering unit normalization for electrical, pressure, length, mass, force and temperature units
 - [ ] additional sanitized real-world datasheet fixtures
 - [ ] batch comparison ergonomics and export refinements
 

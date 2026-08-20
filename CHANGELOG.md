@@ -8,11 +8,21 @@
 - deterministic header-driven parsing for tables with explicit parameter, unit and offered-value columns
 - conservative parsing for two numeric parameter/value pairs rendered side-by-side on one visual row
 - regression coverage for table footers, unrelated multi-column metadata and end-to-end compliance evaluation
+- deterministic voltage conversion for `mV`, `V` and `kV`
+- deterministic current conversion for `mA`, `A` and `kA`
+- deterministic frequency conversion for `Hz`, `kHz` and `MHz`
+- deterministic apparent-power conversion for `VA`, `kVA` and `MVA` without treating them as real power
+- broader pressure conversion including `mbar` and `psi`
+- broader length conversion including `km`, `in` and `ft`
+- deterministic mass and force conversion for `g`/`kg`/`t` and `N`/`kN`
+- explicit affine temperature conversion for `°C`, `°F` and `K`
+- conservative aliases for common electrical, mechanical and rotational-speed unit spellings
 
 ### Changed
 
 - ambiguous unrecognized 3+ column vendor rows are skipped instead of being flattened into false two-column facts
 - development version advanced to `0.2.1.dev0`
+- `psig`, `psia`, `kW`/`kVA` and frequency/rotational-speed relationships remain deliberately non-equivalent without project context
 
 ## 0.2.0 — 2026-08-19
 
