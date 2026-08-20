@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.6.0 — 2026-08-20
+
+### Added
+
+- deterministic formula-free `.xlsx` vendor-table input through the existing `VendorFact` model
+- explicit visible worksheet selection with `--xlsx-sheet` for CLI `extract`, `compare` and `rank` workflows
+- worksheet row and section provenance preserved in normal compliance findings
+- mixed PDF / XLSX / IFC vendor ranking support through the existing deterministic evaluator
+- standard-library OOXML parsing with no spreadsheet runtime dependency
+- regression coverage for workbook structure, worksheet selection, provenance, booleans, units and CLI dispatch
+- XLSX vendor-input reference documentation
+
+### Changed
+
+- vendor input dispatch now accepts `.xlsx` alongside `.pdf` and explicitly scoped `.ifc` inputs
+- formulas, VBA/macros, external relationships, hidden evidence worksheets, merged cells and ambiguous worksheet/header layouts are rejected rather than executed or guessed
+- multiple visible worksheets require explicit `--xlsx-sheet` selection
+- boolean cells remain qualitative `TRUE` / `FALSE` evidence rather than numeric compliance values
+- package and runtime version are frozen at `0.6.0`
+
 ## 0.5.0 — 2026-08-20
 
 ### Added
@@ -135,7 +155,7 @@
 
 ### Changed
 
-- descriptive values such as `316L stainless steel` remain qualitative instead of being interpreted as a numeric value
+- descriptive values such as `316L stainless steel` remain qualitative instead of being interpreted as a numeric value of `316`
 - ambiguous `protection class` is no longer treated as equivalent to an IP rating
 - `rank --output` now supports `.json`, `.html` and `.csv`
 
