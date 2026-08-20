@@ -117,6 +117,8 @@ def _validate_common(
         return f"confidence {confidence:.3f} is below minimum {min_confidence:.3f}"
 
     evidence = candidate.evidence
+    if not isinstance(evidence, Evidence):
+        return "evidence object is required"
     if not isinstance(evidence.page, int) or isinstance(evidence.page, bool) or evidence.page < 1:
         return "evidence page must be a positive integer"
     if evidence.page not in pages:
