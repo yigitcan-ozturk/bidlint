@@ -89,20 +89,26 @@ When knockout evaluation is active, a single report gains an additive `knockout`
 
 Portfolio JSON also adds `knockout_status` to each ranking entry when the gate is active. With no knockout policy, these fields are omitted so the existing report contract remains additive and backward-compatible.
 
-## Supplier-scorecard boundary
+## Procurement workflow integration
 
-The existing `supplier-scorecard.technical-compliance` contract version 1 predates procurement knockout gates. A knockout-assessed report is therefore rejected by that exporter rather than silently converting a disqualified or review-blocked supplier into a normal `READY` technical score.
+Knockout state is now consumed by the v0.8 procurement workflow:
 
-A procurement-aware supplier-scorecard hand-off is a separate v0.8 roadmap item.
+- clarification and unanswered requirement register;
+- deviation register and internal review queue;
+- procurement readiness and ready-only ranking;
+- supplier-scorecard technical-compliance contract version `2`.
+
+The existing supplier-scorecard contract version `1` remains unchanged and still rejects knockout-assessed reports.
+
+See [`PROCUREMENT_WORKFLOW.md`](PROCUREMENT_WORKFLOW.md).
 
 ## Deliberate limits
 
-This first procurement slice does not yet add:
+The procurement workflow still does not infer:
 
-- bidder clarification registers
-- unanswered requirement tracking
-- deviation/review queues
-- commercial scoring
-- automatic knockout inference from specification language
+- commercial scoring;
+- price or delivery preference;
+- contractual acceptance;
+- automatic knockout criteria from specification language.
 
 The rule remains: **explicit evidence, explicit policy, no hidden disqualification logic**.

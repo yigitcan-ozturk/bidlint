@@ -67,9 +67,9 @@
 
 ## v0.8 — procurement workflow
 - [x] mandatory technical knockout criteria
-- [ ] bidder clarification list and unanswered requirement register
-- [ ] deviation register and review queue
-- [ ] procurement-ready package ranking and supplier-scorecard hand-off
+- [x] bidder clarification list and unanswered requirement register
+- [x] deviation register and review queue
+- [x] procurement-ready package ranking and supplier-scorecard hand-off
 
 ## v0.9 — production hardening
 - [ ] malformed and adversarial PDF / XLSX / IFC regression suite

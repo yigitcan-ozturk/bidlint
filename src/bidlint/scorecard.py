@@ -5,18 +5,15 @@ from pathlib import Path
 
 from . import __version__
 from .models import ComplianceReport, Status
+from .procurement import READY, procurement_status
 
 _CONTRACT = "supplier-scorecard.technical-compliance"
 _CONTRACT_VERSION = "1"
+_PROCUREMENT_CONTRACT_VERSION = "2"
 
 
 def supplier_scorecard_signal(report: ComplianceReport, supplier: str) -> dict:
-    """Build a supplier-scorecard profile fragment from one bidlint report.
-
-    Contract v1 predates procurement knockout gates. Knockout-assessed reports
-    are rejected rather than silently exporting a technically disqualified or
-    review-blocked supplier as an ordinary READY score.
-    """
+    """Build the backward-compatible supplier-scorecard v1 fragment."""
     if not isinstance(supplier, str) or not supplier.strip():
         raise ValueError("supplier name is required")
     if report.knockout is not None:
@@ -57,9 +54,49 @@ def supplier_scorecard_signal(report: ComplianceReport, supplier: str) -> dict:
     }
 
 
+def supplier_scorecard_signal_v2(report: ComplianceReport, supplier: str) -> dict:
+    """Build a procurement-aware supplier-scorecard v2 fragment.
+
+    Numeric technical compliance is published only for procurement READY
+    suppliers. Other states retain the raw score inside the audit payload
+    without exposing it as an automatic ranking signal.
+    """
+    if not isinstance(supplier, str) or not supplier.strip():
+        raise ValueError("supplier name is required")
+
+    readiness, reasons = procurement_status(report)
+    technical_compliance = report.compliance_score if readiness == READY else None
+    return {
+        "contract": _CONTRACT,
+        "contract_version": _PROCUREMENT_CONTRACT_VERSION,
+        "supplier": supplier.strip(),
+        "technical_compliance": technical_compliance,
+        "technical_compliance_status": readiness,
+        "technical_compliance_audit": {
+            "tool": "bidlint",
+            "version": __version__,
+            "specification": report.specification,
+            "vendor": report.vendor,
+            "compliance_score": report.compliance_score,
+            "counts": report.counts,
+            "finding_count": len(report.findings),
+            "knockout_status": report.knockout.status.value if report.knockout else None,
+            "procurement_reasons": reasons,
+        },
+    }
+
+
 def supplier_scorecard_json(report: ComplianceReport, supplier: str) -> str:
     return json.dumps(supplier_scorecard_signal(report, supplier), indent=2, ensure_ascii=False) + "\n"
 
 
+def supplier_scorecard_json_v2(report: ComplianceReport, supplier: str) -> str:
+    return json.dumps(supplier_scorecard_signal_v2(report, supplier), indent=2, ensure_ascii=False) + "\n"
+
+
 def write_supplier_scorecard_signal(report: ComplianceReport, supplier: str, path: str | Path) -> None:
     Path(path).write_text(supplier_scorecard_json(report, supplier), encoding="utf-8")
+
+
+def write_supplier_scorecard_signal_v2(report: ComplianceReport, supplier: str, path: str | Path) -> None:
+    Path(path).write_text(supplier_scorecard_json_v2(report, supplier), encoding="utf-8")
