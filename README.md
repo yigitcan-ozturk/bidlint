@@ -13,7 +13,7 @@
 
 It turns document evidence into explicit `PASS / DEVIATION / MISSING / REVIEW` findings, keeps source-page provenance, performs deterministic engineering comparisons where possible, and refuses to fabricate certainty where it cannot.
 
-> Latest stable release: **v0.3.0**
+> Latest stable release: **v0.4.0**
 
 ```text
 Specification PDF ──> requirements ──┐
@@ -147,13 +147,31 @@ See [`docs/VENDOR_PARSING.md`](docs/VENDOR_PARSING.md).
 
 ### Optional structured extraction
 
-`v0.3.0` adds a provider-neutral `StructuredExtractor` boundary for optional AI-assisted or external extraction. The base package still has no AI SDK, API-key or network dependency.
+`v0.3.0` added a provider-neutral `StructuredExtractor` boundary for optional AI-assisted or external extraction. The base package still has no AI SDK, API-key or network dependency.
 
 Provider candidates must carry confidence and page-local evidence. `bidlint` verifies that the declared page exists and that the evidence snippet actually occurs on that page before converting the candidate into a core `Requirement` or `VendorFact`.
 
 Provider confidence is **extraction confidence only**. Providers cannot emit `PASS`, `DEVIATION`, `MISSING` or `REVIEW`; the existing deterministic matcher, unit converter and evaluator remain authoritative.
 
 See [`docs/AI_EXTRACTION.md`](docs/AI_EXTRACTION.md).
+
+### Local MCP server
+
+`v0.4.0` exposes the same deterministic core through an optional local MCP server. The MCP dependency is separate from the base installation:
+
+```bash
+pip install -e '.[mcp]'
+export BIDLINT_MCP_ROOT=/path/to/project/documents
+bidlint-mcp
+```
+
+The initial server uses stdio and exposes synchronous `extract`, `compare` and `explain` tools. Large document work can use pollable local jobs through `submit_extract`, `submit_compare`, `job_status`, `job_result` and `cancel_job`.
+
+All document and alias paths stay inside `BIDLINT_MCP_ROOT`; parent traversal and symlink escapes are rejected. Job records and terminal results are persisted under `.bidlint/jobs`, while interrupted queued/running jobs are explicitly failed after a server restart instead of silently resumed.
+
+MCP clients still do not decide compliance. Both synchronous tools and queued jobs execute the same deterministic parsers, terminology matcher, unit conversion and evaluator used by the CLI.
+
+See [`docs/MCP.md`](docs/MCP.md).
 
 ### Engineering terminology
 
@@ -254,7 +272,7 @@ bidlint extract vendor.pdf --kind vendor
 
 **Explicit uncertainty.** Unsupported or ambiguous comparisons remain `REVIEW`.
 
-**Provider-independent core.** Optional AI-assisted extraction is a replaceable adapter to the deterministic model, not the authority that decides compliance.
+**Provider-independent core.** Optional AI-assisted extraction and MCP are adapters to the deterministic model, not authorities that decide compliance.
 
 **Engineering first.** The project is designed around specification/submittal workflows rather than generic document chat.
 
@@ -276,6 +294,9 @@ optional provider ──> evidence validator ────┤
                       ┌──────────────────────┼───────────────────┐
                       ▼                      ▼                   ▼
                  single report          vendor ranking      audit exports
+                      ▲
+                      │
+             MCP tools / local jobs
 ```
 
 Detailed references:
@@ -286,6 +307,7 @@ Detailed references:
 - [`Engineering units`](docs/ENGINEERING_UNITS.md)
 - [`Vendor parsing`](docs/VENDOR_PARSING.md)
 - [`Optional structured extraction`](docs/AI_EXTRACTION.md)
+- [`MCP server`](docs/MCP.md)
 - [`Terminology`](docs/TERMINOLOGY.md)
 - [`Batch comparison`](docs/BATCH_COMPARISON.md)
 
@@ -301,12 +323,13 @@ The limits are explicit by design:
 - terminology aliases are conservative unless the user provides a project-specific mapping
 - no optional AI/model provider implementation is bundled in the core package
 - provider evidence validation proves page-local text presence, not semantic correctness
+- MCP is optional and the initial server is local/stdin-stdout rather than a remote service
+- running document jobs are cooperatively cancelled, not force-terminated
+- in-progress local jobs are not resumed after a process restart
 
 ## Roadmap
 
-See [`ROADMAP.md`](ROADMAP.md). v0.3.0 establishes the optional provider-neutral structured extraction boundary with confidence and provenance validation while keeping deterministic evaluation authoritative. The next milestone is an MCP server exposing the existing extraction, comparison and explanation capabilities.
-
-Later milestones include IFC property inputs and a direct technical-compliance contract for `supplier-scorecard`.
+See [`ROADMAP.md`](ROADMAP.md). v0.4.0 completes the local MCP milestone with deterministic `extract / compare / explain` tools plus pollable document jobs. The next milestone is v0.5 engineering ecosystem integration: IFC property inputs, a `supplier-scorecard` technical-compliance contract and workbook bid tabulation export.
 
 ## Procurement / engineering tooling
 
@@ -336,7 +359,7 @@ GitHub Actions targets Python 3.11, 3.12 and 3.13 and can also be started manual
 
 Technical documents may contain confidential project, vendor or commercial information. The deterministic core runs locally and does not transmit documents to an external AI API. Optional provider integrations are responsible for their own data-handling and network policies.
 
-See [`SECURITY.md`](SECURITY.md) before exposing document processing as a network service or connecting external extraction providers.
+The MCP server also stays local by default and restricts file access to its configured root. See [`SECURITY.md`](SECURITY.md) before exposing document processing as a network service or connecting external extraction providers.
 
 ## Contributing
 
