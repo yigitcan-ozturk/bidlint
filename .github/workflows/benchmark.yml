@@ -1,0 +1,23 @@
+name: benchmark
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  large-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e '.[dev]'
+      - run: ruff check benchmarks
+      - name: Run deterministic 20k-fact benchmark
+        run: python benchmarks/large_package.py --parameters 5000 --duplicates 4 --repeats 3 --max-seconds 15
