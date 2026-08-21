@@ -27,6 +27,7 @@ jobs:
       - run: python -m pip check
       - run: bidlint --version
       - run: python -m bidlint --version
+      - run: bidlint-contract --manifest
 
   runtime-audit:
     runs-on: ubuntu-latest
