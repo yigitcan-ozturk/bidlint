@@ -10,6 +10,7 @@ from .deviations import write_procurement_review_portfolio, write_procurement_re
 from .document_policy import classify_document, is_evidence_class
 from .inputs import parse_vendor_input
 from .knockout import apply_knockouts, load_knockout_file, validate_knockout_requirement_ids
+from .parse import parse_requirements
 from .portfolio import portfolio_to_html, portfolio_to_markdown, rank_reports, write_portfolio_csv
 from .procurement import write_procurement_portfolio, write_procurement_readiness
 from .report import portfolio_to_json, to_html, to_json, to_markdown, write_csv
@@ -136,6 +137,15 @@ def _ifc_options_supplied(args: argparse.Namespace) -> bool:
 
 def _xlsx_options_supplied(args: argparse.Namespace) -> bool:
     return getattr(args, "xlsx_sheet", None) is not None
+
+
+def _parse_cli_specification(path: str, args: argparse.Namespace):
+    spec_sheet = getattr(args, "spec_xlsx_sheet", None)
+    if Path(path).suffix.lower() == ".pdf":
+        if spec_sheet is not None:
+            raise ValueError("--spec-xlsx-sheet can only be used with .xlsx specification inputs")
+        return parse_requirements(path)
+    return parse_specification_input(path, xlsx_sheet=spec_sheet)
 
 
 def _vendor_has_evidence_suffix(vendor: str, suffix: str) -> bool:
@@ -278,10 +288,7 @@ def main(argv: list[str] | None = None) -> int:
                     raise ValueError("IFC selection options require --kind vendor")
                 if _xlsx_options_supplied(args):
                     raise ValueError("--xlsx-sheet requires --kind vendor")
-                items = parse_specification_input(
-                    args.document,
-                    xlsx_sheet=getattr(args, "spec_xlsx_sheet", None),
-                )
+                items = _parse_cli_specification(args.document, args)
             else:
                 if getattr(args, "spec_xlsx_sheet", None) is not None:
                     raise ValueError("--spec-xlsx-sheet requires --kind specification")
@@ -293,10 +300,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     try:
-        requirements = parse_specification_input(
-            args.specification,
-            xlsx_sheet=getattr(args, "spec_xlsx_sheet", None),
-        )
+        requirements = _parse_cli_specification(args.specification, args)
     except (OSError, RuntimeError, ValueError) as exc:
         raise SystemExit(f"unable to parse specification input {args.specification}: {exc}") from exc
 
