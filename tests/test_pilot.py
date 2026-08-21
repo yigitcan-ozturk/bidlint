@@ -51,6 +51,7 @@ def test_compare_pilot_is_repeatable_and_conformant(tmp_path):
     assert result["conformant"] is True
     assert result["mode"] == "compare"
     assert result["report_count"] == 1
+    assert result["evaluated_requirement_count"] == 1
     assert len(set(result["run_digests_sha256"])) == 1
     assert result["conformance_issue_count"] == 0
 
@@ -72,7 +73,38 @@ def test_rank_pilot_validates_each_report(tmp_path):
     assert result["passed"] is True
     assert result["mode"] == "rank"
     assert result["report_count"] == 2
+    assert result["evaluated_requirement_count"] == 1
     assert result["conformance_issue_count"] == 0
+
+
+def test_pilot_rejects_zero_evaluated_requirements_from_schedule_style_spec(tmp_path):
+    specification = tmp_path / "specification.pdf"
+    vendor = tmp_path / "vendor.pdf"
+    manifest_path = tmp_path / "pilot.json"
+    _make_pdf(
+        specification,
+        [
+            "Drainage channel technical schedule",
+            "Channel material: Grade 304 stainless steel",
+            "Load class: A15",
+            "Grating: Plain ladder grating",
+            "Dimensions: 150 mm x 50 mm",
+        ],
+    )
+    _make_pdf(
+        vendor,
+        [
+            "Channel material: 304 grade stainless steel",
+            "Load class: A15",
+            "Grating: Plain ladder grating",
+        ],
+    )
+    payload = _base_manifest(specification.name, [vendor.name])
+    _write_manifest(manifest_path, payload)
+
+    manifest, loaded = load_manifest(manifest_path)
+    with pytest.raises(ValueError, match="zero evaluated requirements"):
+        run_pilot(manifest, loaded)
 
 
 def test_manifest_rejects_single_repeat(tmp_path):
@@ -141,7 +173,20 @@ def test_cli_writes_pilot_evidence_json(tmp_path, capsys):
     file_payload = json.loads(output.read_text(encoding="utf-8"))
     assert stdout_payload == file_payload
     assert file_payload["passed"] is True
+    assert file_payload["evaluated_requirement_count"] == 1
     assert file_payload["corpus_digest_sha256"]
+
+
+def test_cli_returns_input_code_for_zero_evaluated_requirements(tmp_path, capsys):
+    specification = tmp_path / "specification.pdf"
+    vendor = tmp_path / "vendor.pdf"
+    manifest_path = tmp_path / "pilot.json"
+    _make_pdf(specification, ["Material: Grade 304 stainless steel", "Load class: A15"])
+    _make_pdf(vendor, ["Material: 304 grade stainless steel", "Load class: A15"])
+    _write_manifest(manifest_path, _base_manifest(specification.name, [vendor.name]))
+
+    assert main([str(manifest_path)]) == ExitCode.INPUT
+    assert "zero evaluated requirements" in capsys.readouterr().err
 
 
 def test_cli_returns_input_code_for_invalid_manifest(tmp_path, capsys):

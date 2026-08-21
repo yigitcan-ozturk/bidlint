@@ -69,6 +69,7 @@ For every run the runner records:
 
 - pilot ID and compare/rank mode;
 - repeat count;
+- the positive number of technical requirements actually evaluated;
 - canonical SHA-256 digest of every JSON run;
 - whether all run digests are identical;
 - BidLint 1.x conformance result for every generated report;
@@ -76,7 +77,9 @@ For every run the runner records:
 - SHA-256 digest of the actual specification, vendor files/directories and referenced aliases/knockout policy files;
 - per-file corpus hashes without copying source document contents into the evidence JSON.
 
-A pilot runner `PASS` therefore means **the supplied sanitized corpus produced repeatable and contract-conformant BidLint output**. It does not mean that a domain engineer has approved the technical decisions or that an external deployment has been validated.
+A conformant but empty evaluation is not a valid pilot. If the specification yields zero evaluated requirements, `bidlint-pilot` fails with input status `3` instead of producing successful pilot evidence. This matters for schedule-style tender documents whose technical requirements may be encoded mainly as table rows rather than normative prose; such a document must be transformed into an explicitly supported, sanitized specification representation before it can satisfy the external-pilot gate.
+
+A pilot runner `PASS` therefore means **the supplied sanitized corpus produced a non-empty, repeatable and contract-conformant BidLint evaluation**. It does not mean that a domain engineer has approved the technical decisions or that an external deployment has been validated.
 
 Symlinked corpus roots/files are rejected so the evidence digest cannot silently refer to content outside the declared corpus tree.
 
@@ -100,6 +103,7 @@ Before a fixture may be committed or shared:
 A pilot is considered technically validated only when all applicable gates pass:
 
 - every supported input completes or fails with the documented structured error contract;
+- at least one technical requirement is actually evaluated, and all rank reports agree on the evaluated requirement count;
 - every compliance finding retains traceable specification evidence and vendor evidence when evidence exists;
 - `bidlint-pilot` reports identical JSON output digests across repeated runs;
 - every generated report passes BidLint 1.x conformance validation;
@@ -132,6 +136,7 @@ For each completed external pilot, retain internally:
 - immutable `bidlint-pilot` evidence JSON;
 - sanitized corpus and manifest SHA-256 digests;
 - exact explicit selectors and policies;
+- evaluated technical requirement count;
 - conformance result;
 - benchmark/profile result from the same release line;
 - human-reviewed false-positive and false-negative register;
