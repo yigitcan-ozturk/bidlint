@@ -18,6 +18,8 @@ def _similarity(a: str, b: str, aliases: Mapping[str, str] | None = None) -> flo
     a_tokens, b_tokens = set(ca.split()), set(cb.split())
     overlap = len(a_tokens & b_tokens) / max(1, len(a_tokens | b_tokens))
     seq = SequenceMatcher(None, ca, cb).ratio()
+    if overlap == 0 and seq < 0.8:
+        return 0.0
     return max(overlap, seq)
 
 
