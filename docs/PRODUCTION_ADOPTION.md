@@ -36,12 +36,14 @@ bidlint-pilot pilot.json --json --output pilot-evidence.json
 
 A single vendor selects normal `compare` behavior; two or more vendors select normal `rank` behavior. The runner calls the existing BidLint CLI path rather than implementing a second evaluator.
 
+Specifications may be text-based PDF files or conservative XLSX requirement schedules. Vendor inputs keep the existing PDF/XLSX/IFC/package support. Specification and vendor workbook selectors are deliberately separate so a worksheet choice on one side cannot silently affect the other.
+
 Example:
 
 ```json
 {
   "pilot_id": "pump-package-001",
-  "specification": "sanitized/specification.pdf",
+  "specification": "sanitized/specification.xlsx",
   "vendors": [
     "sanitized/vendor-a/",
     "sanitized/vendor-b/"
@@ -51,6 +53,7 @@ Example:
     "threshold": 0.52,
     "aliases": "policies/aliases.json",
     "knockouts": "policies/knockouts.json",
+    "spec_xlsx_sheet": "Technical Requirements",
     "xlsx_sheet": null,
     "ifc_class": null,
     "ifc_guid": null,
@@ -60,6 +63,10 @@ Example:
 ```
 
 Paths are resolved relative to the manifest file. `repeats` must be between 2 and 10 because the pilot runner exists to produce repeatability evidence, not merely execute one comparison.
+
+For XLSX specifications, the selected worksheet must contain an explicit two-column requirement block such as `General Requirement | Specification` or `Requirement | Required Value`. BidLint consumes only the contiguous requirement block immediately below that header. A blank-row boundary ends the block; a later item schedule is not silently flattened into repeated unscoped requirements. Multi-sheet specifications therefore use `options.spec_xlsx_sheet`. Vendor workbook selection continues to use the independent `options.xlsx_sheet` field.
+
+Presentation-only merged cells are tolerated on the specification side without expanding or inferring their values. Formula cells, macros and external workbook relationships remain rejected. This does not weaken the stricter vendor-evidence rules.
 
 The manifest accepts only technical execution settings already exposed by BidLint. Commercial price, payment terms, delivery preference, commercial scoring or contractual acceptance are rejected as unknown options rather than becoming hidden decision inputs.
 
@@ -77,7 +84,7 @@ For every run the runner records:
 - SHA-256 digest of the actual specification, vendor files/directories and referenced aliases/knockout policy files;
 - per-file corpus hashes without copying source document contents into the evidence JSON.
 
-A conformant but empty evaluation is not a valid pilot. If the specification yields zero evaluated requirements, `bidlint-pilot` fails with input status `3` instead of producing successful pilot evidence. This matters for schedule-style tender documents whose technical requirements may be encoded mainly as table rows rather than normative prose; such a document must be transformed into an explicitly supported, sanitized specification representation before it can satisfy the external-pilot gate.
+A conformant but empty evaluation is not a valid pilot. If the specification yields zero evaluated requirements, `bidlint-pilot` fails with input status `3` instead of producing successful pilot evidence. This matters for schedule-style tender documents whose technical requirements may be encoded mainly as table rows rather than normative prose. An XLSX schedule can now preserve an explicit top-level requirement block directly, while item-scoped rows after the blank boundary remain an explicit limitation until BidLint has a deterministic item-scoping model.
 
 A pilot runner `PASS` therefore means **the supplied sanitized corpus produced a non-empty, repeatable and contract-conformant BidLint evaluation**. It does not mean that a domain engineer has approved the technical decisions or that an external deployment has been validated.
 
@@ -97,6 +104,8 @@ Before a fixture may be committed or shared:
 4. Replace commercially sensitive prices, lead times and contractual clauses with neutral placeholders unless they are specifically required for a non-commercial parser test.
 5. Confirm that images, embedded files, comments, spreadsheet hidden content and PDF metadata do not retain sensitive information.
 6. Record the sanitized fixture hash so repeated pilot runs can prove they used the same inputs.
+
+For an XLSX specification, sanitization must also remove commercial columns and values that are not technical requirements. A workbook that already omits project/customer identifiers but still contains supplier prices is not considered sanitization-complete.
 
 ## 4. Pilot acceptance checklist
 
