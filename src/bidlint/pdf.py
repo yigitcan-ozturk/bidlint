@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from pypdf import PdfReader
+from pypdf.errors import PdfReadError
 
 
 @dataclass(slots=True)
@@ -49,6 +50,13 @@ class PositionedPage:
     rectangles: tuple[PositionedRectangle, ...] = ()
 
 
+def _open_reader(file_path: Path) -> PdfReader:
+    try:
+        return PdfReader(str(file_path))
+    except PdfReadError as exc:
+        raise ValueError(f"invalid PDF input: {file_path.name}") from exc
+
+
 def extract_pages(path: str | Path, *, layout: bool = False) -> list[PageText]:
     """Extract text page-by-page while preserving source page numbers.
 
@@ -57,7 +65,7 @@ def extract_pages(path: str | Path, *, layout: bool = False) -> list[PageText]:
     continues to use ordinary text extraction.
     """
     file_path = Path(path)
-    reader = PdfReader(str(file_path))
+    reader = _open_reader(file_path)
     pages: list[PageText] = []
     for index, page in enumerate(reader.pages, start=1):
         if layout:
@@ -154,7 +162,7 @@ def extract_positioned_pages(path: str | Path, *, y_tolerance: float = 2.0) -> l
     to table cells.
     """
     file_path = Path(path)
-    reader = PdfReader(str(file_path))
+    reader = _open_reader(file_path)
     pages: list[PositionedPage] = []
 
     for index, page in enumerate(reader.pages, start=1):

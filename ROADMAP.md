@@ -72,7 +72,7 @@
 - [x] procurement-ready package ranking and supplier-scorecard hand-off
 
 ## v0.9 — production hardening
-- [ ] malformed and adversarial PDF / XLSX / IFC regression suite
+- [x] malformed and adversarial PDF / XLSX / IFC regression suite
 - [ ] deterministic large-package performance benchmarks
 - [x] structured CLI exit codes and error contracts
 - [x] package build, compatibility and security hardening
