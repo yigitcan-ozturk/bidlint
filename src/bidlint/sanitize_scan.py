@@ -95,6 +95,11 @@ _IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".bmp"}
 _BENIGN_PDF_METADATA = {"anonymous", "untitled", "none", ""}
 _IGNORED_PDF_METADATA_KEYS = {"/Producer", "/Creator", "/CreationDate", "/ModDate", "/Trapped"}
 
+_OOXML_STRUCTURAL_URL = re.compile(
+    r"(?i)https?://(?:schemas\.openxmlformats\.org|schemas\.microsoft\.com|purl\.org/dc|"
+    r"www\.w3\.org/(?:2000|2001|XML))/[^\s\"'<>]*"
+)
+
 
 def _finding(
     severity: str,
@@ -118,6 +123,11 @@ def _scan_text(text: str, *, file: str, location: str) -> list[SanitizationFindi
         if count:
             findings.append(_finding("REVIEW", category, file, location, count, message))
     return findings
+
+
+def _scan_ooxml_text(text: str, *, file: str, location: str) -> list[SanitizationFinding]:
+    """Ignore package-schema URLs while retaining URLs in actual OOXML content."""
+    return _scan_text(_OOXML_STRUCTURAL_URL.sub("", text), file=file, location=location)
 
 
 def _scan_pdf(path: Path, display: str) -> list[SanitizationFinding]:
@@ -238,7 +248,7 @@ def _scan_ooxml(path: Path, display: str) -> list[SanitizationFinding]:
                 text = _decode_xml(archive.read(name))
             except KeyError:
                 continue
-            findings.extend(_scan_text(text, file=display, location=name))
+            findings.extend(_scan_ooxml_text(text, file=display, location=name))
 
             if lowered.endswith("xl/workbook.xml"):
                 hidden_count = len(re.findall(r'(?i)\bstate\s*=\s*["\'](?:hidden|veryHidden)["\']', text))
