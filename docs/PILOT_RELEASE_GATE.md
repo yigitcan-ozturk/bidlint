@@ -60,6 +60,14 @@ For machine-readable output:
 bidlint-pilot-gate . --json
 ```
 
+## Specification coverage evidence
+
+For a structured XLSX specification, the release gate inspects the same selected worksheet without copying cell contents into its JSON output. It reports only non-content scope information such as the requirement header row, evaluated requirement-row count, the number of populated rows after the supported contiguous requirement block, and the first/last affected row numbers.
+
+If populated rows exist after the blank-row boundary that ends the supported requirement block, `specification_coverage.manual_scope_review_required` is true. This commonly indicates a later item schedule, notes section or other technical scope that BidLint did not automatically flatten. In that case release readiness requires an explicit human `technical.specification_scope_reviewed = true` record. The human reviewer must determine whether those rows were separately checked, are intentionally out of scope, or reveal an unresolved limitation. A zero unresolved-limitation count must still be justified; the flag does not waive that gate.
+
+PDF specifications do not claim equivalent row-level coverage observability. Their normal source/findings review remains unchanged.
+
 ## What the gate requires
 
 The gate returns `RELEASE READY` only when all of the following are true:
@@ -72,6 +80,7 @@ The gate returns `RELEASE READY` only when all of the following are true:
 - the baseline replay verifier reports an exact compatibility match for pilot ID, mode, report count, manifest digest, corpus digest and output digest;
 - the technical reviewer explicitly selects `APPROVE_BASELINE`;
 - every non-PASS technical finding was reviewed;
+- any unscoped populated XLSX specification rows were explicitly reviewed when the coverage evidence requires it;
 - unresolved limitation count is zero;
 - every known product defect has a corresponding minimized regression fixture/test count;
 - knockout criteria remained explicit rather than inferred;
@@ -81,7 +90,7 @@ The command returns exit code `0` only when the release gate is ready, `3` for a
 
 ## Human review record
 
-`review/approval.json` is intentionally explicit. Its default state created by `bidlint-pilot-init` is not approved:
+`review/approval.json` is intentionally explicit. Its default state created by `bidlint-pilot-init` is not approved. When an XLSX coverage check reports unscoped populated rows, add and explicitly set `specification_scope_reviewed` only after completing that review:
 
 ```json
 {
@@ -98,6 +107,7 @@ The command returns exit code `0` only when the release gate is ready, `3` for a
     "reviewer": "",
     "reviewed_at": "",
     "all_non_pass_findings_reviewed": false,
+    "specification_scope_reviewed": false,
     "false_positive_count": 0,
     "false_negative_count": 0,
     "unresolved_limitation_count": 0,
