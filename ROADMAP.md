@@ -81,4 +81,4 @@
 - [x] freeze CLI, JSON, finding and VendorFact compatibility contracts
 - [x] freeze deterministic status and scoring semantics
 - [x] publish backward-compatibility and versioning policy
-- [ ] release bidlint 1.0.0
+- [x] release bidlint 1.0.0
