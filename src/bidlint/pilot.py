@@ -24,6 +24,7 @@ _ALLOWED_OPTIONS = {
     "ifc_guid",
     "ifc_pset",
 }
+_STABLE_STATUSES = ("PASS", "DEVIATION", "MISSING", "REVIEW")
 
 
 @dataclass(frozen=True, slots=True)
@@ -275,6 +276,43 @@ def _conformance_issues(payload: object, mode: str) -> tuple[ConformanceIssue, .
     return tuple(issues)
 
 
+def _report_requirement_count(report: object) -> int | None:
+    if not isinstance(report, dict):
+        return None
+    counts = report.get("counts")
+    if not isinstance(counts, dict):
+        return None
+
+    total = 0
+    for status in _STABLE_STATUSES:
+        value = counts.get(status)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            return None
+        total += value
+    return total
+
+
+def _evaluated_requirement_count(payload: object, mode: str) -> int:
+    if mode == "compare":
+        reports = [payload]
+    elif isinstance(payload, dict) and isinstance(payload.get("reports"), list):
+        reports = payload["reports"]
+    else:
+        raise ValueError("pilot output does not expose report requirement counts")
+
+    counts = [_report_requirement_count(report) for report in reports]
+    if not counts or any(count is None for count in counts):
+        raise ValueError("pilot output does not expose valid report requirement counts")
+    evaluated = [count for count in counts if count is not None]
+    if any(count == 0 for count in evaluated):
+        raise ValueError(
+            "pilot produced zero evaluated requirements; external pilots require an extractable technical specification"
+        )
+    if len(set(evaluated)) != 1:
+        raise ValueError("pilot rank reports disagree on evaluated requirement count")
+    return evaluated[0]
+
+
 def run_pilot(manifest: PilotManifest, manifest_payload: object) -> dict[str, object]:
     corpus_sha256, corpus_records = corpus_digest(manifest)
     manifest_sha256 = _canonical_digest(manifest_payload)
@@ -298,15 +336,20 @@ def run_pilot(manifest: PilotManifest, manifest_payload: object) -> dict[str, ob
     if manifest.mode == "rank" and isinstance(first_payload, dict) and isinstance(first_payload.get("reports"), list):
         report_count = len(first_payload["reports"])
 
+    evaluated_requirement_count: int | None = None
+    if conformant:
+        evaluated_requirement_count = _evaluated_requirement_count(first_payload, manifest.mode)
+
     return {
         "tool": "bidlint-pilot",
         "pilot_id": manifest.pilot_id,
         "mode": manifest.mode,
         "repeats": manifest.repeats,
-        "passed": deterministic and conformant,
+        "passed": deterministic and conformant and evaluated_requirement_count is not None,
         "deterministic": deterministic,
         "conformant": conformant,
         "report_count": report_count,
+        "evaluated_requirement_count": evaluated_requirement_count,
         "output_digest_sha256": run_digests[0],
         "run_digests_sha256": run_digests,
         "manifest_digest_sha256": manifest_sha256,
@@ -358,6 +401,7 @@ def main(argv: list[str] | None = None) -> int:
         status = "PASS" if result["passed"] else "FAIL"
         print(f"{status} — {manifest.pilot_id}")
         print(f"mode: {manifest.mode}; repeats: {manifest.repeats}; reports: {result['report_count']}")
+        print(f"evaluated requirements: {result['evaluated_requirement_count']}")
         print(f"deterministic: {result['deterministic']}; conformant: {result['conformant']}")
         print(f"corpus sha256: {result['corpus_digest_sha256']}")
 
