@@ -74,7 +74,7 @@
 ## v0.9 — production hardening
 - [ ] malformed and adversarial PDF / XLSX / IFC regression suite
 - [ ] deterministic large-package performance benchmarks
-- [ ] structured CLI exit codes and error contracts
+- [x] structured CLI exit codes and error contracts
 - [ ] package build, compatibility and security hardening
 
 ## v1.0 — stable contract
