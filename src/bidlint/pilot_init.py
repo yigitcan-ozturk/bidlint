@@ -38,6 +38,7 @@ def _manifest(pilot_id: str, vendor_count: int) -> dict[str, object]:
             "threshold": 0.52,
             "aliases": None,
             "knockouts": None,
+            "spec_xlsx_sheet": None,
             "xlsx_sheet": None,
             "ifc_class": None,
             "ifc_guid": None,
@@ -95,7 +96,7 @@ This workspace is an intake scaffold, not an approved pilot corpus.
 11. Convert every reproducible false positive/false negative into a minimized sanitized regression fixture before approving the baseline.
 12. Keep raw files, evidence and human review notes private unless they have been separately approved for publication.
 
-The generated `pilot.json` points to placeholder sanitized file paths. Replace or rename those paths deliberately if the real sanitized corpus uses other supported inputs or package directories.
+The generated `pilot.json` points to placeholder sanitized file paths. Replace or rename those paths deliberately if the real sanitized corpus uses other supported inputs or package directories. For a multi-sheet XLSX specification, set `options.spec_xlsx_sheet`; vendor XLSX selection remains separately controlled by `options.xlsx_sheet`.
 """
 
 

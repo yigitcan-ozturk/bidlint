@@ -19,6 +19,7 @@ _ALLOWED_OPTIONS = {
     "threshold",
     "aliases",
     "knockouts",
+    "spec_xlsx_sheet",
     "xlsx_sheet",
     "ifc_class",
     "ifc_guid",
@@ -36,6 +37,7 @@ class PilotManifest:
     threshold: float
     aliases: Path | None = None
     knockouts: Path | None = None
+    spec_xlsx_sheet: str | None = None
     xlsx_sheet: str | None = None
     ifc_class: str | None = None
     ifc_guid: str | None = None
@@ -120,6 +122,7 @@ def parse_manifest_payload(payload: object, *, base_dir: str | Path) -> PilotMan
         threshold=float(threshold),
         aliases=_optional_relative_path(base, options_value.get("aliases"), "options.aliases"),
         knockouts=_optional_relative_path(base, options_value.get("knockouts"), "options.knockouts"),
+        spec_xlsx_sheet=_optional_string(options_value.get("spec_xlsx_sheet"), "options.spec_xlsx_sheet"),
         xlsx_sheet=_optional_string(options_value.get("xlsx_sheet"), "options.xlsx_sheet"),
         ifc_class=_optional_string(options_value.get("ifc_class"), "options.ifc_class"),
         ifc_guid=_optional_string(options_value.get("ifc_guid"), "options.ifc_guid"),
@@ -166,6 +169,7 @@ def build_bidlint_args(manifest: PilotManifest) -> list[str]:
     args.extend(["--json", "--threshold", f"{manifest.threshold:g}"])
     _append_option(args, "--aliases", manifest.aliases)
     _append_option(args, "--knockouts", manifest.knockouts)
+    _append_option(args, "--spec-xlsx-sheet", manifest.spec_xlsx_sheet)
     _append_option(args, "--xlsx-sheet", manifest.xlsx_sheet)
     _append_option(args, "--ifc-class", manifest.ifc_class)
     _append_option(args, "--ifc-guid", manifest.ifc_guid)

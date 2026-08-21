@@ -15,6 +15,7 @@ from .portfolio import portfolio_to_html, portfolio_to_markdown, rank_reports, w
 from .procurement import write_procurement_portfolio, write_procurement_readiness
 from .report import portfolio_to_json, to_html, to_json, to_markdown, write_csv
 from .scorecard import write_supplier_scorecard_signal, write_supplier_scorecard_signal_v2
+from .specification_input import parse_specification_input
 from .terminology import load_alias_file
 from .xlsx import write_portfolio_xlsx
 
@@ -122,12 +123,29 @@ def _add_xlsx_options(command: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_specification_options(command: argparse.ArgumentParser) -> None:
+    group = command.add_argument_group("XLSX specification selection")
+    group.add_argument(
+        "--spec-xlsx-sheet",
+        help="select one visible worksheet when a specification .xlsx contains multiple visible sheets",
+    )
+
+
 def _ifc_options_supplied(args: argparse.Namespace) -> bool:
     return any(getattr(args, name, None) is not None for name in ("ifc_class", "ifc_guid", "ifc_pset"))
 
 
 def _xlsx_options_supplied(args: argparse.Namespace) -> bool:
     return getattr(args, "xlsx_sheet", None) is not None
+
+
+def _parse_cli_specification(path: str, args: argparse.Namespace):
+    spec_sheet = getattr(args, "spec_xlsx_sheet", None)
+    if Path(path).suffix.lower() == ".pdf":
+        if spec_sheet is not None:
+            raise ValueError("--spec-xlsx-sheet can only be used with .xlsx specification inputs")
+        return parse_requirements(path)
+    return parse_specification_input(path, xlsx_sheet=spec_sheet)
 
 
 def _vendor_has_evidence_suffix(vendor: str, suffix: str) -> bool:
@@ -207,7 +225,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     compare_cmd = sub.add_parser(
         "compare",
-        help="compare a specification PDF with one vendor file or package directory",
+        help="compare a specification PDF/XLSX with one vendor file or package directory",
     )
     compare_cmd.add_argument("specification")
     compare_cmd.add_argument("vendor")
@@ -215,6 +233,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_procurement_options(compare_cmd)
     _add_ifc_options(compare_cmd)
     _add_xlsx_options(compare_cmd)
+    _add_specification_options(compare_cmd)
     compare_cmd.add_argument("--json", action="store_true", help="print machine-readable JSON")
     compare_cmd.add_argument("--markdown", action="store_true", help="print Markdown report")
     compare_cmd.add_argument("--html", action="store_true", help="print self-contained HTML report")
@@ -245,6 +264,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_procurement_options(rank_cmd)
     _add_ifc_options(rank_cmd)
     _add_xlsx_options(rank_cmd)
+    _add_specification_options(rank_cmd)
     rank_cmd.add_argument("--json", action="store_true", help="print portfolio JSON")
     rank_cmd.add_argument("--top", type=_positive_int, help="show only the top N vendors in terminal output")
     rank_cmd.add_argument("--output", help="write ranking to .json, .md, .html, .csv or .xlsx")
@@ -254,6 +274,7 @@ def build_parser() -> argparse.ArgumentParser:
     extract_cmd.add_argument("--kind", choices=["specification", "vendor"], required=True)
     _add_ifc_options(extract_cmd)
     _add_xlsx_options(extract_cmd)
+    _add_specification_options(extract_cmd)
     return parser
 
 
@@ -267,8 +288,10 @@ def main(argv: list[str] | None = None) -> int:
                     raise ValueError("IFC selection options require --kind vendor")
                 if _xlsx_options_supplied(args):
                     raise ValueError("--xlsx-sheet requires --kind vendor")
-                items = parse_requirements(args.document)
+                items = _parse_cli_specification(args.document, args)
             else:
+                if getattr(args, "spec_xlsx_sheet", None) is not None:
+                    raise ValueError("--spec-xlsx-sheet requires --kind specification")
                 items = _parse_cli_vendor(args.document, args)
         except (OSError, RuntimeError, ValueError) as exc:
             raise SystemExit(f"unable to extract {args.kind}: {exc}") from exc
@@ -276,7 +299,11 @@ def main(argv: list[str] | None = None) -> int:
             print(item)
         return 0
 
-    requirements = parse_requirements(args.specification)
+    try:
+        requirements = _parse_cli_specification(args.specification, args)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise SystemExit(f"unable to parse specification input {args.specification}: {exc}") from exc
+
     try:
         aliases = load_alias_file(args.aliases) if args.aliases else None
     except (OSError, ValueError) as exc:
