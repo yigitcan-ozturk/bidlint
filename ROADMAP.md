@@ -89,5 +89,6 @@
 - [x] production-shaped conflict-path CPU and peak-memory profiling gate
 - [x] manifest-driven repeatability/conformance pilot runner with corpus evidence digests
 - [x] immutable approved-baseline replay verifier for pilot upgrades
+- [x] executable pre-pilot sanitization scanner with non-leaking findings and guarded pilot entry point
 - [ ] validate an external sanitized pilot corpus and convert findings into regression fixtures
 - [ ] release bidlint 1.1.0
