@@ -75,7 +75,7 @@
 - [ ] malformed and adversarial PDF / XLSX / IFC regression suite
 - [ ] deterministic large-package performance benchmarks
 - [x] structured CLI exit codes and error contracts
-- [ ] package build, compatibility and security hardening
+- [x] package build, compatibility and security hardening
 
 ## v1.0 — stable contract
 - [ ] freeze CLI, JSON, finding and VendorFact compatibility contracts
