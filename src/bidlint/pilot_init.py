@@ -46,6 +46,32 @@ def _manifest(pilot_id: str, vendor_count: int) -> dict[str, object]:
     }
 
 
+def _approval_template(pilot_id: str) -> dict[str, object]:
+    return {
+        "tool": "bidlint-pilot-review",
+        "pilot_id": pilot_id,
+        "sanitization": {
+            "approved": False,
+            "reviewer": "",
+            "reviewed_at": "",
+            "review_findings_resolved": False,
+        },
+        "technical": {
+            "decision": "RE_RUN_AFTER_FIXES",
+            "reviewer": "",
+            "reviewed_at": "",
+            "all_non_pass_findings_reviewed": False,
+            "false_positive_count": 0,
+            "false_negative_count": 0,
+            "unresolved_limitation_count": 0,
+            "known_product_defect_count": 0,
+            "regression_fixtures_created": 0,
+            "explicit_knockouts_only": True,
+            "no_commercial_scoring": True,
+        },
+    }
+
+
 def _workspace_readme(pilot_id: str, vendor_count: int) -> str:
     return f"""# BidLint private pilot workspace
 
@@ -61,10 +87,13 @@ This workspace is an intake scaffold, not an approved pilot corpus.
 3. Remove identities, contacts, project/customer identifiers, signatures, commercial values and identifying metadata while preserving technical structure needed for evaluation.
 4. Run `bidlint-pilot-scan pilot.json --json --output evidence/sanitization-scan.json`.
 5. Resolve every BLOCK finding and manually inspect every REVIEW coverage gap.
-6. Run `bidlint-pilot pilot.json --json --output evidence/pilot-evidence.json`.
-7. Complete `review/TECHNICAL_REVIEW.md` against the sanitized source documents.
-8. Convert every reproducible false positive/false negative into a minimized sanitized regression fixture before approving a baseline.
-9. Keep raw files, evidence and human review notes private unless they have been separately approved for publication.
+6. Run `bidlint-pilot pilot.json --json --output evidence/approved-baseline.json` only after the first successful technical review candidate is ready.
+7. Complete `review/TECHNICAL_REVIEW.md` and explicitly fill `review/approval.json`; generated approval values default to blocked/unapproved.
+8. Re-run the same sanitized corpus and save `evidence/replay-evidence.json`.
+9. Run `bidlint-pilot-verify evidence/approved-baseline.json evidence/replay-evidence.json`.
+10. Run `bidlint-pilot-gate .` and require `RELEASE READY` before closing the external-pilot release gate.
+11. Convert every reproducible false positive/false negative into a minimized sanitized regression fixture before approving the baseline.
+12. Keep raw files, evidence and human review notes private unless they have been separately approved for publication.
 
 The generated `pilot.json` points to placeholder sanitized file paths. Replace or rename those paths deliberately if the real sanitized corpus uses other supported inputs or package directories.
 """
@@ -138,6 +167,8 @@ Regression fixtures/tests created: ____________________
 Technical pilot decision: [ ] APPROVE BASELINE  [ ] BLOCK ROLLOUT  [ ] RE-RUN AFTER FIXES
 
 Reviewer sign-off: ____________________
+
+After signing this narrative record, mirror the explicit decision and counts into `approval.json`. `bidlint-pilot-gate` reads the JSON record; it never infers human approval from Markdown checkboxes.
 """
 
 
@@ -182,6 +213,10 @@ def initialize_workspace(path: str | Path, *, pilot_id: str, vendor_count: int =
     (root / "README.md").write_text(_workspace_readme(pilot_id, vendor_count), encoding="utf-8")
     (root / "SANITIZATION_CHECKLIST.md").write_text(_sanitization_checklist(), encoding="utf-8")
     (root / "review" / "TECHNICAL_REVIEW.md").write_text(_technical_review(), encoding="utf-8")
+    (root / "review" / "approval.json").write_text(
+        json.dumps(_approval_template(pilot_id), indent=2) + "\n",
+        encoding="utf-8",
+    )
 
     return {
         "tool": "bidlint-pilot-init",
