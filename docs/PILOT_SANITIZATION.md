@@ -16,6 +16,8 @@ The scanner checks declared specification, vendor, alias and knockout-policy con
 
 - email addresses and international phone-like contact data;
 - currency amounts and common commercial/Incoterm/payment terminology;
+- procurement-commercial labels such as unit price/rate/cost, line total, subtotal and extended/total price/cost/amount;
+- numeric XLSX cells that use currency number formats, even when the stored cell value itself contains no currency symbol or currency code;
 - legal-entity-like names and tax-identifier labels;
 - non-generic PDF author/title/subject metadata;
 - PDF embedded attachments;
@@ -23,6 +25,8 @@ The scanner checks declared specification, vendor, alias and knockout-policy con
 - hidden or veryHidden XLSX worksheets;
 - XLSX external links;
 - symlinked corpus content.
+
+For XLSX currency-format detection, the scanner inspects workbook styles and worksheet style references structurally. Finding output reports only the count of affected numeric cells. It does not emit cell references, number-format strings or cell values. Technical terms such as `Flow Rate` are not treated as procurement `Unit Rate` merely because they contain the word `rate`.
 
 A blocker produces process exit code `3`. I/O failures use `5`; invalid CLI usage uses argparse's `2`.
 
@@ -41,7 +45,7 @@ The scanner does **not** OCR visual material. A result with `automated_clear: tr
 
 ## Non-leaking output
 
-Finding records contain only category, logical file name, location, count and remediation message. The matched email, phone number, company name, price or metadata value is intentionally omitted so the scan report does not become a second copy of sensitive data.
+Finding records contain only category, logical file name, location, count and remediation message. The matched email, phone number, company name, price or metadata value is intentionally omitted so the scan report does not become a second copy of sensitive data. Currency-formatted XLSX findings follow the same rule: they report a structural count rather than the numeric values or affected cell addresses.
 
 ## Pilot gate behavior
 

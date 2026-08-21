@@ -14,6 +14,7 @@ from pypdf.errors import PdfReadError
 
 from .errors import ExitCode
 from .pilot import PilotManifest, build_parser as build_pilot_parser, load_manifest, main as unguarded_pilot_main
+from .xlsx_format_scan import currency_formatted_cell_count
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,7 +56,8 @@ _BLOCK_PATTERNS: tuple[tuple[str, re.Pattern[str], str], ...] = (
     (
         "commercial-terms",
         re.compile(
-            r"(?i)\b(?:unit\s+price|total\s+price|payment\s+terms?|offer\s+validity|incoterms?|"
+            r"(?i)\b(?:unit\s+(?:price|rate|cost)|line\s+total|subtotal|extended\s+(?:price|cost|amount)|"
+            r"total\s+(?:price|cost|amount)|currency|payment\s+terms?|offer\s+validity|incoterms?|"
             r"EXW|FOB|FCA|CIF|CIP|DAP|DPU|DDP)\b"
         ),
         "commercial or contractual term detected",
@@ -265,6 +267,20 @@ def _scan_ooxml(path: Path, display: str) -> list[SanitizationFinding]:
                             "OOXML core metadata detected; strip author/title/project metadata before pilot use",
                         )
                     )
+
+        if path.suffix.casefold() == ".xlsx":
+            currency_cells = currency_formatted_cell_count(archive)
+            if currency_cells:
+                findings.append(
+                    _finding(
+                        "BLOCK",
+                        "xlsx-currency-formatted-cells",
+                        display,
+                        "worksheets/styles",
+                        currency_cells,
+                        "currency-formatted numeric cells detected; remove commercial values before pilot use",
+                    )
+                )
     return findings
 
 
@@ -316,7 +332,10 @@ def _iter_root(label: str, root: Path) -> Iterable[tuple[Path, str]]:
     if root.is_file():
         yield root, f"{label}/{root.name}"
         return
-    files = sorted((item for item in root.rglob("*") if item.is_file()), key=lambda item: item.relative_to(root).as_posix())
+    files = sorted(
+        (item for item in root.rglob("*") if item.is_file()),
+        key=lambda item: item.relative_to(root).as_posix(),
+    )
     for child in files:
         yield child, f"{label}/{child.relative_to(root).as_posix()}"
 
