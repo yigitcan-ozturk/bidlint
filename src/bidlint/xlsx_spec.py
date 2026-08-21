@@ -3,9 +3,18 @@ from __future__ import annotations
 import re
 import zipfile
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 from .models import Requirement, SourceRef
-from .xlsx_input import _rows, _select_sheet, _shared_strings, _validate_archive, _workbook_sheets
+from .xlsx_input import (
+    _cell_text,
+    _column_index,
+    _q,
+    _select_sheet,
+    _shared_strings,
+    _validate_archive,
+    _workbook_sheets,
+)
 
 _SPEC_PARAMETER_HEADERS = {
     "general requirement",
@@ -54,6 +63,32 @@ def _normalize_unit(unit: str | None) -> str | None:
         "c": "°c",
         "degrees": "°",
     }.get(normalized, normalized)
+
+
+def _spec_rows(sheet_root: ET.Element, shared: list[str]) -> list[tuple[int, dict[int, str]]]:
+    """Read cell values while allowing presentation-only merged cells.
+
+    Formula cells remain rejected by the shared XLSX cell parser. Merge ranges are
+    not expanded or inferred; only the actual stored top-left cell text is read.
+    """
+    rows: list[tuple[int, dict[int, str]]] = []
+    for row in sheet_root.findall(f"{_q('sheetData')}/{_q('row')}"):
+        try:
+            row_number = int(row.attrib["r"])
+        except (KeyError, ValueError) as exc:
+            raise ValueError("XLSX specification row is missing a valid row number") from exc
+        values: dict[int, str] = {}
+        for cell in row.findall(_q("c")):
+            reference = cell.attrib.get("r")
+            if not reference:
+                raise ValueError(f"XLSX specification row {row_number} contains a cell without a reference")
+            column = _column_index(reference)
+            text = _cell_text(cell, shared)
+            if text:
+                values[column] = text
+        if values:
+            rows.append((row_number, values))
+    return rows
 
 
 def _spec_header(rows: list[tuple[int, dict[int, str]]]) -> tuple[int, int, int]:
@@ -111,8 +146,8 @@ def parse_xlsx_requirements(path: str | Path, *, sheet: str | None = None) -> li
         selected = _select_sheet(_workbook_sheets(archive), sheet)
         if selected.path not in archive.namelist():
             raise ValueError(f"worksheet package part missing for {selected.name}")
-        root = __import__("xml.etree.ElementTree", fromlist=["ElementTree"]).fromstring(archive.read(selected.path))
-        rows = _rows(root, shared)
+        root = ET.fromstring(archive.read(selected.path))
+        rows = _spec_rows(root, shared)
 
     header_row, parameter_column, value_column = _spec_header(rows)
     candidates = [(row_number, values) for row_number, values in rows if row_number > header_row]
