@@ -31,6 +31,8 @@ def test_initialize_workspace_creates_private_first_scaffold(tmp_path):
     ]
     assert manifest["options"]["threshold"] == 0.52
     assert manifest["options"]["knockouts"] is None
+    assert manifest["options"]["spec_xlsx_sheet"] is None
+    assert manifest["options"]["xlsx_sheet"] is None
 
     approval = json.loads((workspace / "review" / "approval.json").read_text(encoding="utf-8"))
     assert approval["pilot_id"] == "external-pump-001"
