@@ -78,7 +78,7 @@
 - [x] package build, compatibility and security hardening
 
 ## v1.0 — stable contract
-- [ ] freeze CLI, JSON, finding and VendorFact compatibility contracts
-- [ ] freeze deterministic status and scoring semantics
-- [ ] publish backward-compatibility and versioning policy
+- [x] freeze CLI, JSON, finding and VendorFact compatibility contracts
+- [x] freeze deterministic status and scoring semantics
+- [x] publish backward-compatibility and versioning policy
 - [ ] release bidlint 1.0.0
