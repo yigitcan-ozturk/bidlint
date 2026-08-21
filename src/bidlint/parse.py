@@ -40,6 +40,7 @@ _COMPARATOR_PATTERNS: list[tuple[re.Pattern[str], str]] = [
         "=",
     ),
 ]
+_COMPOSITE_DIMENSION_TAIL = re.compile(r"\s*[x×]\s*-?\d", re.IGNORECASE)
 
 _KEY_VALUE = re.compile(r"^\s*([^:]{2,80}?)\s*:\s*(.+?)\s*$")
 _LABEL_ONLY = re.compile(r"^\s*([^:]{2,80}?)\s*:\s*$")
@@ -516,6 +517,14 @@ def _take_coordinate_columns(rows: CoordinateRows, line: str, header: TableHeade
     return None
 
 
+def _is_composite_dimension_match(line: str, match: re.Match[str]) -> bool:
+    unit = match.group(2)
+    tail = line[match.end() :]
+    if unit and unit.casefold() == "x" and re.match(r"\s*-?\d", tail):
+        return True
+    return bool(_COMPOSITE_DIMENSION_TAIL.match(tail))
+
+
 def parse_requirements(path: str | Path) -> list[Requirement]:
     path = Path(path)
     pages = extract_pages(path)
@@ -539,6 +548,8 @@ def parse_requirements(path: str | Path) -> list[Requirement]:
             parameter = _parameter_from_text(line, normative.start()) if normative else _parameter_from_text(line)
             for pattern, parsed_operator in _COMPARATOR_PATTERNS:
                 match = pattern.search(line)
+                if match and _is_composite_dimension_match(line, match):
+                    continue
                 if match:
                     operator = parsed_operator
                     value = float(match.group(1))
