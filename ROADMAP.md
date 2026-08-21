@@ -82,3 +82,10 @@
 - [x] freeze deterministic status and scoring semantics
 - [x] publish backward-compatibility and versioning policy
 - [x] release bidlint 1.0.0
+
+## v1.1 — production adoption
+- [x] offline BidLint 1.x report conformance checker and console entry point
+- [x] production pilot sanitization, evidence-retention and acceptance protocol
+- [x] production-shaped conflict-path CPU and peak-memory profiling gate
+- [ ] validate an external sanitized pilot corpus and convert findings into regression fixtures
+- [ ] release bidlint 1.1.0

@@ -21,3 +21,12 @@ jobs:
       - run: ruff check benchmarks
       - name: Run deterministic 20k-fact benchmark
         run: python benchmarks/large_package.py --parameters 5000 --duplicates 4 --repeats 3 --max-seconds 15
+      - name: Run production-shaped conflict and memory profile
+        run: >-
+          python benchmarks/production_profile.py
+          --parameters 6000
+          --duplicates 4
+          --conflict-every 25
+          --repeats 2
+          --max-seconds 20
+          --max-peak-mib 256
