@@ -33,6 +33,14 @@ jobs:
       - run: bidlint-pilot-init --help
       - run: bidlint-pilot-scan --help
       - run: bidlint-pilot-verify --help
+      - name: Retain validated wheel
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bidlint-wheel-${{ github.sha }}
+          path: dist/*.whl
+          if-no-files-found: error
+          retention-days: 7
 
   runtime-audit:
     runs-on: ubuntu-latest
