@@ -30,6 +30,7 @@ Issues = "https://github.com/yigitcan-ozturk/bidlint/issues"
 bidlint = "bidlint.entrypoint:main"
 bidlint-contract = "bidlint.conformance:main"
 bidlint-pilot = "bidlint.pilot:main"
+bidlint-pilot-verify = "bidlint.pilot_baseline:main"
 bidlint-mcp = "bidlint.mcp_server:main"
 
 [project.optional-dependencies]

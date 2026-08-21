@@ -29,6 +29,7 @@ jobs:
       - run: python -m bidlint --version
       - run: bidlint-contract --manifest
       - run: bidlint-pilot --help
+      - run: bidlint-pilot-verify --help
 
   runtime-audit:
     runs-on: ubuntu-latest
