@@ -10,6 +10,7 @@ from typing import Any
 from .errors import ExitCode
 from .pilot import load_manifest
 from .pilot_baseline import validate_evidence_payload, verification_result
+from .spec_coverage import specification_coverage
 
 _REQUIRED_FILES = {
     "scan": Path("evidence/sanitization-scan.json"),
@@ -75,7 +76,13 @@ def _validate_scan(payload: dict[str, Any], *, pilot_id: str, failures: list[str
         failures.append("sanitization scan review_count must be a non-negative integer")
 
 
-def _validate_review(payload: dict[str, Any], *, pilot_id: str, failures: list[str]) -> None:
+def _validate_review(
+    payload: dict[str, Any],
+    *,
+    pilot_id: str,
+    scope_review_required: bool,
+    failures: list[str],
+) -> None:
     if payload.get("tool") != "bidlint-pilot-review":
         failures.append("human review tool must equal 'bidlint-pilot-review'")
     if payload.get("pilot_id") != pilot_id:
@@ -108,6 +115,12 @@ def _validate_review(payload: dict[str, Any], *, pilot_id: str, failures: list[s
         "technical.all_non_pass_findings_reviewed",
         failures,
     )
+    if scope_review_required:
+        _require_true(
+            technical.get("specification_scope_reviewed"),
+            "technical.specification_scope_reviewed",
+            failures,
+        )
     _require_true(technical.get("explicit_knockouts_only"), "technical.explicit_knockouts_only", failures)
     _require_true(technical.get("no_commercial_scoring"), "technical.no_commercial_scoring", failures)
 
@@ -150,10 +163,19 @@ def evaluate_release_gate(workspace: str | Path) -> dict[str, object]:
     baseline = _load_json(root / _REQUIRED_FILES["baseline"], label="approved baseline")
     replay = _load_json(root / _REQUIRED_FILES["replay"], label="replay evidence")
     review = _load_json(root / _REQUIRED_FILES["review"], label="human review")
+    coverage = specification_coverage(
+        manifest.specification,
+        xlsx_sheet=manifest.spec_xlsx_sheet,
+    )
 
     failures: list[str] = []
     _validate_scan(scan, pilot_id=manifest.pilot_id, failures=failures)
-    _validate_review(review, pilot_id=manifest.pilot_id, failures=failures)
+    _validate_review(
+        review,
+        pilot_id=manifest.pilot_id,
+        scope_review_required=coverage.get("manual_scope_review_required") is True,
+        failures=failures,
+    )
 
     try:
         baseline = validate_evidence_payload(baseline, label="baseline")
@@ -181,6 +203,7 @@ def evaluate_release_gate(workspace: str | Path) -> dict[str, object]:
             failure.startswith(("sanitization.", "technical.", "human review")) for failure in failures
         ),
         "baseline_replay_match": verification.get("match") is True,
+        "specification_coverage": coverage,
         "required_files": {name: path.as_posix() for name, path in _REQUIRED_FILES.items()},
     }
 

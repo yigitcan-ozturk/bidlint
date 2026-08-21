@@ -62,6 +62,7 @@ def _approval_template(pilot_id: str) -> dict[str, object]:
             "reviewer": "",
             "reviewed_at": "",
             "all_non_pass_findings_reviewed": False,
+            "specification_scope_reviewed": False,
             "false_positive_count": 0,
             "false_negative_count": 0,
             "unresolved_limitation_count": 0,
@@ -162,6 +163,7 @@ Regression fixtures/tests created: ____________________
 - [ ] DEVIATION outcomes reviewed against source evidence.
 - [ ] MISSING outcomes reviewed against the complete declared vendor corpus.
 - [ ] REVIEW outcomes retained for genuinely ambiguous/non-deterministic cases.
+- [ ] Any unscoped XLSX specification rows reported by `bidlint-pilot-gate` were manually reviewed and dispositioned.
 - [ ] Clarification/deviation/procurement exports are internally consistent when used.
 - [ ] No commercial score, price preference, delivery preference or contractual acceptance was introduced.
 

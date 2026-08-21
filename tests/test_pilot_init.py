@@ -39,6 +39,10 @@ def test_initialize_workspace_creates_private_first_scaffold(tmp_path):
     assert approval["sanitization"]["approved"] is False
     assert approval["technical"]["decision"] == "RE_RUN_AFTER_FIXES"
     assert approval["technical"]["all_non_pass_findings_reviewed"] is False
+    assert approval["technical"]["specification_scope_reviewed"] is False
+
+    technical_review = (workspace / "review" / "TECHNICAL_REVIEW.md").read_text(encoding="utf-8")
+    assert "unscoped XLSX specification rows" in technical_review
 
     gitignore = (workspace / ".gitignore").read_text(encoding="utf-8")
     assert "raw/" in gitignore
