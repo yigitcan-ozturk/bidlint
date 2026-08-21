@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import warnings
 import zipfile
-from pathlib import Path
 
 import pytest
 
