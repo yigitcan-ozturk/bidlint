@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import __version__
 from .models import ComplianceReport
+from .portfolio import rank_reports
 
 
 def to_json(report: ComplianceReport) -> str:
@@ -14,27 +15,38 @@ def to_json(report: ComplianceReport) -> str:
 
 
 def portfolio_to_json(reports: list[ComplianceReport]) -> str:
-    ranked = sorted(
-        reports,
-        key=lambda r: (
-            -r.compliance_score,
-            r.counts["DEVIATION"] + r.counts["MISSING"],
-            r.vendor.lower(),
-        ),
-    )
+    assessed = [report.knockout is not None for report in reports]
+    if any(assessed) and not all(assessed):
+        raise ValueError("cannot rank knockout-assessed and unassessed reports together")
+    if reports and all(assessed):
+        ranked = rank_reports(reports)
+    else:
+        ranked = sorted(
+            reports,
+            key=lambda r: (
+                -r.compliance_score,
+                r.counts["DEVIATION"] + r.counts["MISSING"],
+                r.vendor.lower(),
+            ),
+        )
+
+    ranking = []
+    for index, report in enumerate(ranked, start=1):
+        item = {
+            "rank": index,
+            "vendor": report.vendor,
+            "compliance_score": report.compliance_score,
+            "counts": report.counts,
+        }
+        if report.knockout is not None:
+            item["knockout_status"] = report.knockout.status.value
+        ranking.append(item)
+
     return json.dumps(
         {
             "tool": "bidlint",
             "version": __version__,
-            "ranking": [
-                {
-                    "rank": index,
-                    "vendor": report.vendor,
-                    "compliance_score": report.compliance_score,
-                    "counts": report.counts,
-                }
-                for index, report in enumerate(ranked, start=1)
-            ],
+            "ranking": ranking,
             "reports": [report.to_dict() for report in ranked],
         },
         indent=2,
