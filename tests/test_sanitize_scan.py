@@ -14,6 +14,7 @@ from bidlint.sanitize_scan import guarded_pilot_main, scan_file, scan_manifest
 
 def _make_pdf(path: Path, lines: list[str], *, author: str | None = None, title: str | None = None) -> None:
     pdf = canvas.Canvas(str(path), pagesize=A4)
+    pdf.setSubject("")
     if author is not None:
         pdf.setAuthor(author)
     if title is not None:
