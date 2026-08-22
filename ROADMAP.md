@@ -92,5 +92,5 @@
 - [x] executable pre-pilot sanitization scanner with non-leaking findings and guarded pilot entry point
 - [x] private-first external-pilot intake workspace with raw/evidence/review git protection
 - [x] explicit release gate requiring clean sanitization, human technical approval and immutable baseline replay match
-- [ ] validate an external sanitized pilot corpus and convert findings into regression fixtures
-- [ ] release bidlint 1.1.0
+- [x] validate an external sanitized pilot corpus and convert findings into regression fixtures
+- [x] release bidlint 1.1.0
