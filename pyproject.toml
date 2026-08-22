@@ -13,7 +13,7 @@ authors = [{ name = "Yiğitcan Öztürk" }]
 keywords = ["engineering", "architecture", "procurement", "specifications", "submittals", "compliance", "pdf", "ifc"]
 dependencies = ["pypdf>=5.9,<7"]
 classifiers = [
-  "Development Status :: 5 - Production/Stable",
+  "Development Status :: 4 - Beta",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
