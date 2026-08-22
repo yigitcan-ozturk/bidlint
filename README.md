@@ -38,12 +38,16 @@ These meanings, together with the 1.x scoring and public CLI/error contract, are
 
 Requirements: Python 3.11+ and text-based PDFs for PDF extraction. IFC support is optional.
 
+Install the stable **v1.0.0** release directly from GitHub — no repository clone required:
+
 ```bash
-git clone https://github.com/yigitcan-ozturk/bidlint.git
-cd bidlint
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
+python -m pip install "bidlint @ git+https://github.com/yigitcan-ozturk/bidlint.git@v1.0.0"
+```
+
+Verify the CLI:
+
+```bash
+bidlint --help
 ```
 
 Compare one vendor:
@@ -175,7 +179,11 @@ The tools are intentionally separated by responsibility so commercial scoring, s
 ## Development
 
 ```bash
-pip install -e '.[dev]'
+git clone https://github.com/yigitcan-ozturk/bidlint.git
+cd bidlint
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
 ruff check src tests
 pytest -q
 ```
