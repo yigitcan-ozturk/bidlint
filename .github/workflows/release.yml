@@ -38,9 +38,30 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         shell: bash
         run: |
+          set -euo pipefail
+
           TAG="v${VERSION}"
+          TAG_EXISTS=false
+
+          # A stable release may reuse an existing tag only when it already
+          # resolves to this exact main-branch commit. This prevents a stale or
+          # premature tag from silently becoming authoritative release evidence.
+          git fetch --force --tags origin
+          if git rev-parse --verify --quiet "refs/tags/${TAG}" >/dev/null; then
+            TAG_EXISTS=true
+            TAG_SHA="$(git rev-list -n 1 "$TAG")"
+            if [[ "$TAG_SHA" != "$GITHUB_SHA" ]]; then
+              echo "::error::${TAG} already exists at ${TAG_SHA}, but this release commit is ${GITHUB_SHA}. Delete or explicitly invalidate the stale tag before releasing."
+              exit 1
+            fi
+          fi
+
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "$TAG already exists; nothing to do."
+            if [[ "$TAG_EXISTS" != "true" ]]; then
+              echo "::error::GitHub release ${TAG} exists but its repository tag is missing. Repair release/tag state before retrying."
+              exit 1
+            fi
+            echo "$TAG already exists and resolves to this exact commit; nothing to do."
             exit 0
           fi
 
