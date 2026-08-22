@@ -11,9 +11,9 @@
 
 `bidlint` is an open-source, deterministic technical-bid compliance engine. It compares engineering specifications with vendor datasheets, submittals, multi-document packages, explicit XLSX offer tables and explicitly scoped IFC properties while preserving source evidence.
 
-> **Latest stable release: v1.0.0**
+> **Latest stable release: v1.1.0**
 >
-> **Current development line: v1.1.0.dev0.** The v1.1 production-adoption release remains intentionally gated until the external sanitized pilot and required human approvals are complete.
+> v1.1.0 completes the production-adoption milestone after an approved external sanitized pilot, explicit human/domain review and an exact approved-baseline replay. The frozen 1.x compliance semantics remain unchanged.
 
 ## Why BidLint
 
@@ -38,10 +38,10 @@ These meanings, together with the 1.x scoring and public CLI/error contract, are
 
 Requirements: Python 3.11+ and text-based PDFs for PDF extraction. IFC support is optional.
 
-Install the stable **v1.0.0** release directly from GitHub — no repository clone required:
+Install the stable **v1.1.0** release directly from GitHub — no repository clone required:
 
 ```bash
-python -m pip install "bidlint @ git+https://github.com/yigitcan-ozturk/bidlint.git@v1.0.0"
+python -m pip install "bidlint @ git+https://github.com/yigitcan-ozturk/bidlint.git@v1.1.0"
 ```
 
 Verify the CLI:
@@ -115,9 +115,9 @@ The procurement workflow adds explicit technical knockouts, clarification and un
 
 See [`docs/KNOCKOUTS.md`](docs/KNOCKOUTS.md), [`docs/SUPPLIER_SCORECARD.md`](docs/SUPPLIER_SCORECARD.md) and [`docs/WORKBOOK_EXPORT.md`](docs/WORKBOOK_EXPORT.md).
 
-## v1.1 production adoption — in development
+## v1.1 production adoption — stable
 
-The v1.1 development line adds guarded production-pilot controls around the frozen 1.x compliance semantics:
+The v1.1 stable release adds guarded production-pilot controls around the frozen 1.x compliance semantics:
 
 ```bash
 bidlint-pilot-init ./pilot --pilot-id external-pilot-001 --vendors 1
@@ -127,9 +127,9 @@ bidlint-pilot-verify approved-baseline.json current-evidence.json --json
 bidlint-pilot-gate ./pilot --json
 ```
 
-The release gate requires a blocker-free sanitization scan, explicit human sanitization and technical approval, review of non-PASS outcomes, regression coverage for known product defects and an exact approved-baseline replay. Until those external-pilot conditions are satisfied, v1.1 remains a development line rather than a stable release.
+The release gate requires a blocker-free sanitization scan, explicit human sanitization and technical approval, review of non-PASS outcomes, regression coverage for known product defects and an exact approved-baseline replay. The final external sanitized pilot completed that gate with `release_ready=true`, `failure_count=0` and an exact baseline/replay match.
 
-See [`docs/PRODUCTION_ADOPTION.md`](docs/PRODUCTION_ADOPTION.md), [`docs/PILOT_SANITIZATION.md`](docs/PILOT_SANITIZATION.md), [`docs/PILOT_RELEASE_GATE.md`](docs/PILOT_RELEASE_GATE.md) and [`docs/PILOT_BASELINES.md`](docs/PILOT_BASELINES.md).
+See [`docs/releases/v1.1.0.md`](docs/releases/v1.1.0.md), [`docs/PRODUCTION_ADOPTION.md`](docs/PRODUCTION_ADOPTION.md), [`docs/PILOT_SANITIZATION.md`](docs/PILOT_SANITIZATION.md), [`docs/PILOT_RELEASE_GATE.md`](docs/PILOT_RELEASE_GATE.md) and [`docs/PILOT_BASELINES.md`](docs/PILOT_BASELINES.md).
 
 ## Optional integrations
 
