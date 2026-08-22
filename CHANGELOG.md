@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.1.0 — 2026-08-22
+
+### Added
+
+- offline BidLint 1.x report conformance validation and compatibility manifest
+- private-first external-pilot workspace, sanitization preflight and evidence-retention workflow
+- repeated deterministic pilot execution with corpus/output digests and immutable baseline replay verification
+- explicit `bidlint-pilot-gate` requiring human/domain approval, reviewed non-PASS findings and manual specification-scope disposition where required
+- conservative XLSX requirement-scope coverage evidence so populated rows outside the supported block remain visible for manual review
+- production-shaped conflict-path CPU and peak-memory profiling gate
+- fail-closed release-tag integrity checks and Trusted Publishing workflow preparation for PyPI
+
+### Changed
+
+- empty external pilots are rejected when zero requirements are evaluated
+- grade/designation values and composite dimensions remain qualitative unless deterministic comparison is supported
+- unrelated fuzzy parameter matches require stronger lexical evidence
+- sanitization detection covers OOXML URL noise and currency-formatted commercial XLSX cells more accurately
+- package/runtime version is frozen at `1.1.0`
+- development classifier moves from Beta to Production/Stable
+
+### Validation
+
+- external sanitized pilot completed with explicit human/domain approval
+- final replay matched the approved baseline with zero mismatches
+- final release gate returned `release_ready=true` and `failure_count=0`
+
+## 1.0.0 — 2026-08-21
+
+### Added
+
+- frozen public CLI, JSON, finding and `VendorFact` compatibility contracts for the 1.x line
+- explicit backward-compatibility and semantic-versioning policy
+- procurement workflow with technical knockouts, clarification/unanswered registers, deviation/review queues and supplier-scorecard hand-off
+- malformed/adversarial document regression coverage, deterministic large-package benchmarks and package/runtime audit gates
+
+### Changed
+
+- `PASS / DEVIATION / MISSING / REVIEW`, knockout semantics and deterministic compliance scoring are frozen for the 1.x contract
+- package/runtime version is frozen at `1.0.0`
+
 ## 0.7.0 — 2026-08-20
 
 ### Added
