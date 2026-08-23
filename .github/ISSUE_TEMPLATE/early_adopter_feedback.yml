@@ -1,0 +1,88 @@
+name: Early adopter feedback
+description: Share feedback from a sanitized real technical-bid workflow
+title: "[Pilot feedback] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing BidLint on a real workflow. Please do not include confidential customer, supplier, quotation, specification or project data.
+
+  - type: input
+    id: industry
+    attributes:
+      label: Industry / workflow
+      description: For example EPC, machinery, construction procurement, vendor submittal review or proposal engineering.
+      placeholder: EPC technical procurement
+    validations:
+      required: true
+
+  - type: dropdown
+    id: inputs
+    attributes:
+      label: Input types used
+      multiple: true
+      options:
+        - Specification PDF
+        - Vendor PDF / datasheet
+        - Vendor XLSX
+        - Multi-document vendor package
+        - IFC properties
+        - Included sample files
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command / workflow used
+      description: Paste the command or briefly describe the workflow.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should BidLint have concluded or surfaced?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What did BidLint produce instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Adoption impact
+      options:
+        - Minor friction
+        - Would require manual workaround
+        - Would block use in a real team
+        - Safety / compliance concern
+        - Positive workflow improvement
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Why this matters in a real technical evaluation
+      description: Explain the engineering or procurement consequence.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confidentiality
+    attributes:
+      label: Confidentiality confirmation
+      options:
+        - label: I confirm that this issue contains no confidential customer, supplier, quotation, specification or project data.
+          required: true
