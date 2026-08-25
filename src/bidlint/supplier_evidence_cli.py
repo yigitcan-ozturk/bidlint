@@ -5,6 +5,10 @@ import json
 from pathlib import Path
 
 from .supplier_evidence import write_evidence_assessment_template, write_validated_evidence_review
+from .supplier_evidence_binding import (
+    assessment_contains_file_references,
+    write_validated_evidence_review_with_files,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -22,6 +26,10 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("supplier_review", help="buyer supplier clarification review JSON")
     validate.add_argument("assessment", help="completed supplier evidence assessment JSON")
     validate.add_argument("output", help="validated supplier evidence review JSON")
+    validate.add_argument(
+        "--evidence-files",
+        help="optional bidlint.supplier-evidence-files manifest used to validate file:Fxxx references",
+    )
     return parser
 
 
@@ -41,7 +49,18 @@ def main(argv: list[str] | None = None) -> int:
             _require_json(args.supplier_review, "supplier_review")
             _require_json(args.assessment, "assessment")
             _require_json(args.output, "output")
-            write_validated_evidence_review(args.supplier_review, args.assessment, args.output)
+            if args.evidence_files:
+                _require_json(args.evidence_files, "evidence_files")
+                write_validated_evidence_review_with_files(
+                    args.supplier_review,
+                    args.assessment,
+                    args.evidence_files,
+                    args.output,
+                )
+            else:
+                if assessment_contains_file_references(args.assessment):
+                    raise ValueError("file: evidence references require --evidence-files manifest")
+                write_validated_evidence_review(args.supplier_review, args.assessment, args.output)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
         raise SystemExit(f"unable to process supplier evidence assessment: {exc}") from exc
     return 0
