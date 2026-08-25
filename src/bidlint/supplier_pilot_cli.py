@@ -10,6 +10,7 @@ from .supplier_pilot_attested_files import (
     write_portal_readiness_with_files,
 )
 from .supplier_pilot_files import prepare_pilot_return_with_evidence_files
+from .supplier_workspace import write_supplier_workspace_status
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,6 +31,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--evidence-map",
         help="optional local evidence-map JSON; creates evidence-files.json bound to the buyer review",
     )
+
+    status = subparsers.add_parser(
+        "status",
+        help="verify a pilot workspace and report its current fail-closed workflow stage",
+    )
+    status.add_argument("workspace", help="pilot return workspace directory")
+    status.add_argument("output", help="supplier workspace status JSON")
 
     attest = subparsers.add_parser(
         "attestation-template",
@@ -87,6 +95,11 @@ def main(argv: list[str] | None = None) -> int:
                 args.output_dir,
                 evidence_map_path=args.evidence_map,
             )
+            return 0
+
+        if args.command == "status":
+            _require_json(args.output, "output")
+            write_supplier_workspace_status(args.workspace, args.output)
             return 0
 
         if args.command == "attestation-template":
