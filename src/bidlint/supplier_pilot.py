@@ -16,6 +16,7 @@ _ATTESTATION_CONTRACT = "bidlint.supplier-pilot-attestation"
 _ATTESTATION_CONTRACT_VERSION = "1"
 _GATE_CONTRACT = "bidlint.supplier-portal-readiness"
 _GATE_CONTRACT_VERSION = "1"
+_EVIDENCE_OVERALL_VALUES = {"NOT_ASSESSED", "INADEQUATE", "PARTIAL", "ADEQUATE", "NEEDS_CLARIFICATION"}
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -43,6 +44,16 @@ def _require_bool(mapping: dict, key: str) -> bool:
     return value
 
 
+def _is_sha256(value: object) -> bool:
+    if not isinstance(value, str) or len(value) != 64:
+        return False
+    try:
+        int(value, 16)
+    except ValueError:
+        return False
+    return True
+
+
 def _read_json_object(path: str | Path, label: str) -> tuple[dict, bytes, Path]:
     source = Path(path)
     data = source.read_bytes()
@@ -63,9 +74,35 @@ def _validate_review(review: dict) -> None:
         raise ValueError("supplier clarification review must require human review")
     _require_string(review, "specification", allow_empty=False)
     _require_string(review, "vendor", allow_empty=False)
+
     items = review.get("items")
     if not isinstance(items, list) or not items:
         raise ValueError("supplier clarification review must contain at least one item")
+    seen: set[str] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("supplier clarification review items must be JSON objects")
+        requirement_id = _require_string(item, "requirement_id", allow_empty=False)
+        if requirement_id in seen:
+            raise ValueError(f"duplicate requirement_id in supplier clarification review: {requirement_id}")
+        seen.add(requirement_id)
+        _require_string(item, "parameter", allow_empty=False)
+        _require_string(item, "prior_finding_status", allow_empty=False)
+
+    provenance = review.get("provenance")
+    if not isinstance(provenance, dict):
+        raise ValueError("supplier clarification review provenance must be a JSON object")
+    register_source = provenance.get("clarification_register")
+    response_source = provenance.get("supplier_response")
+    binding = provenance.get("source_register_binding")
+    if not isinstance(register_source, dict) or not _is_sha256(register_source.get("canonical_sha256")):
+        raise ValueError("supplier clarification review is missing canonical clarification-register provenance")
+    if not isinstance(response_source, dict) or not _is_sha256(response_source.get("byte_sha256")):
+        raise ValueError("supplier clarification review is missing supplier-response byte provenance")
+    if not isinstance(response_source.get("byte_length"), int) or response_source["byte_length"] <= 0:
+        raise ValueError("supplier clarification review supplier-response byte_length must be positive")
+    if not isinstance(binding, dict) or binding.get("matches") is not True:
+        raise ValueError("supplier clarification review source-register binding is not verified")
 
 
 def _validate_evidence_review(evidence_review: dict, review: dict) -> None:
@@ -101,6 +138,20 @@ def _validate_evidence_review(evidence_review: dict, review: dict) -> None:
     items = evidence_review.get("items")
     if not isinstance(items, list) or not items:
         raise ValueError("supplier evidence review must contain at least one item")
+    review_ids = {item["requirement_id"] for item in review["items"]}
+    evidence_ids: set[str] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("supplier evidence review items must be JSON objects")
+        requirement_id = _require_string(item, "requirement_id", allow_empty=False)
+        if requirement_id in evidence_ids:
+            raise ValueError(f"duplicate requirement_id in supplier evidence review: {requirement_id}")
+        evidence_ids.add(requirement_id)
+        overall = _require_string(item, "overall", allow_empty=False)
+        if overall not in _EVIDENCE_OVERALL_VALUES:
+            raise ValueError(f"invalid supplier evidence overall status for {requirement_id}: {overall}")
+    if evidence_ids != review_ids:
+        raise ValueError("supplier evidence review requirement IDs do not match buyer review")
 
 
 def _validate_history_binding(history: dict, review: dict) -> dict:
@@ -132,10 +183,10 @@ def prepare_pilot_return(
     output = Path(output_dir)
     if output.exists():
         raise ValueError("pilot output directory already exists")
-    output.mkdir(parents=True)
 
     review = ingest_supplier_response_files(register_path, response_path)
     assessment = evidence_assessment_template(review)
+    output.mkdir(parents=True)
 
     review_path = output / "buyer-review.json"
     assessment_path = output / "evidence-assessment.json"
@@ -240,12 +291,16 @@ def evaluate_portal_readiness(review: dict, evidence_review: dict, history: dict
     _validate_attestation(attestation, review, evidence_review, history)
 
     evidence_items = evidence_review["items"]
-    evidence_assessment_complete = all(item.get("overall") != "NOT_ASSESSED" for item in evidence_items)
-    evidence_reviewer_named = bool(str(evidence_review["reviewer"].get("name") or "").strip())
+    evidence_assessment_complete = all(item["overall"] != "NOT_ASSESSED" for item in evidence_items)
+    evidence_reviewer_named = bool(evidence_review["reviewer"]["name"].strip())
     revision_count = int(history_validation["revision_count"])
     revision_requirement_met = not attestation["revision_occurred"] or revision_count >= 2
 
     checks = [
+        {
+            "check": "pilot_id_recorded",
+            "passed": bool(attestation["pilot_id"].strip()),
+        },
         {
             "check": "external_supplier_response_received",
             "passed": attestation["external_supplier_response_received"],
