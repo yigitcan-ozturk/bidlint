@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from .supplier_intake import write_supplier_intake_from_register
+from .supplier_intake_validated import write_validated_supplier_intake_from_register
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,7 +30,7 @@ def main(argv: list[str] | None = None) -> int:
         payload = json.loads(source.read_text(encoding="utf-8"))
         if not isinstance(payload, dict):
             raise ValueError("clarification register root must be a JSON object")
-        write_supplier_intake_from_register(payload, output)
+        write_validated_supplier_intake_from_register(payload, output)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         raise SystemExit(f"unable to create supplier intake form: {exc}") from exc
     return 0
