@@ -59,6 +59,26 @@ bidlint-supplier-evidence validate buyer-review.json evidence-assessment.json ev
 
 Validation confirms that the file token exists, is bound to the same requirement ID and is allowed for the evidence dimension where it is cited. The resulting `bidlint.supplier-evidence-review / 1` records canonical and byte provenance for the evidence-file manifest. A `file:` reference without `--evidence-files` is rejected.
 
+## Pilot attestation and portal gate binding
+
+When the validated evidence review is file-backed, the same exact evidence manifest must remain present through external-pilot attestation and portal-readiness evaluation:
+
+```text
+bidlint-supplier-pilot attestation-template \
+  buyer-review.json evidence-review.json history.json pilot-attestation.json \
+  --evidence-files evidence-files.json
+
+bidlint-supplier-pilot portal-gate \
+  buyer-review.json evidence-review.json history.json pilot-attestation.json portal-readiness.json \
+  --evidence-files evidence-files.json
+```
+
+The attestation records `source_supplier_evidence_files_sha256`. The portal gate verifies that digest against the supplied manifest and against the evidence-review provenance. If the file-backed evidence review is supplied without `--evidence-files`, if the manifest was changed after human review, or if the attestation names another manifest digest, the workflow fails closed.
+
+This keeps one immutable provenance chain:
+
+`returned file bytes → evidence-files manifest → human evidence review → immutable history → pilot attestation → portal gate`
+
 Evidence files remain external project-controlled bytes. BidLint does not upload, copy, approve or interpret the content merely because it is present in this manifest. Human evidence adequacy review remains mandatory.
 
 This contract does not change technical compliance, supplier approval, deviation acceptance, contractual acceptance, or BidLint evaluator/scoring semantics.
