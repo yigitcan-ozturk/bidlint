@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 from .supplier_pilot import write_pilot_attestation_template, write_portal_readiness
+from .supplier_pilot_attested_files import (
+    write_pilot_attestation_template_with_files,
+    write_portal_readiness_with_files,
+)
 from .supplier_pilot_files import prepare_pilot_return_with_evidence_files
 
 
@@ -34,6 +39,10 @@ def build_parser() -> argparse.ArgumentParser:
     attest.add_argument("evidence_review", help="validated supplier evidence review JSON")
     attest.add_argument("history", help="validated supplier clarification history JSON")
     attest.add_argument("output", help="pilot attestation template JSON")
+    attest.add_argument(
+        "--evidence-files",
+        help="supplier evidence-files manifest required when evidence review is file-backed",
+    )
 
     gate = subparsers.add_parser(
         "portal-gate",
@@ -44,12 +53,24 @@ def build_parser() -> argparse.ArgumentParser:
     gate.add_argument("history", help="validated supplier clarification history JSON")
     gate.add_argument("attestation", help="completed supplier pilot attestation JSON")
     gate.add_argument("output", help="portal readiness result JSON")
+    gate.add_argument(
+        "--evidence-files",
+        help="supplier evidence-files manifest required when evidence review is file-backed",
+    )
     return parser
 
 
 def _require_json(path: str, label: str) -> None:
     if Path(path).suffix.lower() != ".json":
         raise SystemExit(f"{label} must end in .json")
+
+
+def _evidence_review_requires_files(path: str) -> bool:
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("supplier evidence review root must be a JSON object")
+    provenance = payload.get("provenance")
+    return isinstance(provenance, dict) and isinstance(provenance.get("supplier_evidence_files"), dict)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -76,7 +97,19 @@ def main(argv: list[str] | None = None) -> int:
                 (args.output, "output"),
             ):
                 _require_json(value, label)
-            write_pilot_attestation_template(args.buyer_review, args.evidence_review, args.history, args.output)
+            if args.evidence_files:
+                _require_json(args.evidence_files, "evidence_files")
+                write_pilot_attestation_template_with_files(
+                    args.buyer_review,
+                    args.evidence_review,
+                    args.history,
+                    args.evidence_files,
+                    args.output,
+                )
+            else:
+                if _evidence_review_requires_files(args.evidence_review):
+                    raise ValueError("file-backed supplier evidence review requires --evidence-files manifest")
+                write_pilot_attestation_template(args.buyer_review, args.evidence_review, args.history, args.output)
             return 0
 
         if args.command == "portal-gate":
@@ -88,15 +121,28 @@ def main(argv: list[str] | None = None) -> int:
                 (args.output, "output"),
             ):
                 _require_json(value, label)
-            write_portal_readiness(
-                args.buyer_review,
-                args.evidence_review,
-                args.history,
-                args.attestation,
-                args.output,
-            )
+            if args.evidence_files:
+                _require_json(args.evidence_files, "evidence_files")
+                write_portal_readiness_with_files(
+                    args.buyer_review,
+                    args.evidence_review,
+                    args.history,
+                    args.attestation,
+                    args.evidence_files,
+                    args.output,
+                )
+            else:
+                if _evidence_review_requires_files(args.evidence_review):
+                    raise ValueError("file-backed supplier evidence review requires --evidence-files manifest")
+                write_portal_readiness(
+                    args.buyer_review,
+                    args.evidence_review,
+                    args.history,
+                    args.attestation,
+                    args.output,
+                )
             return 0
-    except (OSError, ValueError) as exc:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
         raise SystemExit(f"supplier pilot workflow failed: {exc}") from exc
 
     raise SystemExit("unsupported supplier pilot command")
