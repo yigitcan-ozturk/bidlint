@@ -101,7 +101,7 @@
 - [x] add a structured `bidlint.supplier-clarification-response` response contract
 - [x] keep supplier intake zero-server and zero-upload by default for private pilot use
 - [ ] validate the supplier form with a real sanitized forging / material-offer clarification workflow
-- [ ] define buyer-side response ingestion with provenance and explicit human re-review
-- [ ] define evidence-adequacy fields for calculations, certificates, test basis and supporting documents
+- [x] define buyer-side response ingestion with provenance and explicit human re-review
+- [x] define evidence-adequacy fields for calculations, certificates, test basis and supporting documents
 - [ ] define revision/conflict handling for supplier clarification responses and superseded evidence
 - [ ] decide hosted supplier portal scope only after the offline workflow is externally validated
