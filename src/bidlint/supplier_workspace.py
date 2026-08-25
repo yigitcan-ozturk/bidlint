@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from . import __version__
+from .supplier_evidence_binding import _validate_file_manifest
 from .supplier_pilot import (
     _validate_evidence_review,
     _validate_history_binding,
@@ -104,18 +105,10 @@ def evaluate_supplier_workspace(workspace_dir: str | Path) -> dict:
         evidence_files, evidence_files_bytes, evidence_files_path = _verify_manifest_artifact(
             root, artifacts["evidence_files"], "evidence_files"
         )
-        _validate_evidence_files_binding(
-            review,
-            {
-                "provenance": {
-                    "supplier_evidence_files": {
-                        "canonical_sha256": _canonical_json_sha256(evidence_files)
-                    }
-                },
-                "evidence_file_reference_validation": {"validated": True},
-            },
-            evidence_files,
-        )
+        _validate_file_manifest(evidence_files, review)
+        expected_count = artifacts["evidence_files"].get("file_count")
+        if expected_count is not None and expected_count != evidence_files.get("file_count"):
+            raise ValueError("evidence_files file_count does not match pilot-return manifest")
 
     checks: list[dict] = [
         {"check": "pilot_return_manifest_valid", "passed": True},
@@ -164,7 +157,6 @@ def evaluate_supplier_workspace(workspace_dir: str | Path) -> dict:
 
     evidence_review = None
     history = None
-    attestation = None
     expected_gate = None
 
     if evidence_review_entry is not None:
