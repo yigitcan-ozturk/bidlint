@@ -25,6 +25,15 @@ Run:
 bidlint-supplier-files buyer-review.json evidence-map.json evidence-files.json
 ```
 
+Or create it as part of the external pilot work package:
+
+```text
+bidlint-supplier-pilot prepare-return register.json supplier-response.json pilot-return \
+  --evidence-map evidence-map.json
+```
+
+That produces `evidence-files.json` alongside `buyer-review.json`, `evidence-assessment.json` and `pilot-return-manifest.json`, with the evidence manifest digest recorded in the pilot-return manifest.
+
 The output contract is `bidlint.supplier-evidence-files / 1` and records, for every file:
 
 - deterministic file ID (`F001`, `F002`, ...);
@@ -39,6 +48,17 @@ The output contract is `bidlint.supplier-evidence-files / 1` and records, for ev
 
 The manifest is bound to the canonical SHA-256 of the exact buyer review and the byte SHA-256 of the evidence-map input. Duplicate source paths, duplicate basenames, unknown requirement IDs, unsupported evidence types, missing files and directories fail closed.
 
-Evidence files remain external project-controlled bytes. BidLint does not upload, copy, approve or interpret the content merely because it is present in this manifest. Human evidence adequacy review remains mandatory. Evidence assessment references may use the generated token form `file:F001`.
+## Evidence assessment binding
+
+A human evidence assessment may reference a file with its stable token, for example `file:F001`. File references are fail-closed: if an assessment contains a `file:` reference, validation requires the exact evidence manifest:
+
+```text
+bidlint-supplier-evidence validate buyer-review.json evidence-assessment.json evidence-review.json \
+  --evidence-files evidence-files.json
+```
+
+Validation confirms that the file token exists, is bound to the same requirement ID and is allowed for the evidence dimension where it is cited. The resulting `bidlint.supplier-evidence-review / 1` records canonical and byte provenance for the evidence-file manifest. A `file:` reference without `--evidence-files` is rejected.
+
+Evidence files remain external project-controlled bytes. BidLint does not upload, copy, approve or interpret the content merely because it is present in this manifest. Human evidence adequacy review remains mandatory.
 
 This contract does not change technical compliance, supplier approval, deviation acceptance, contractual acceptance, or BidLint evaluator/scoring semantics.
