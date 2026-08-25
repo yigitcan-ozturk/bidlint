@@ -37,6 +37,7 @@ bidlint-pilot-verify = "bidlint.pilot_baseline:main"
 bidlint-mcp = "bidlint.mcp_server:main"
 bidlint-supplier-intake = "bidlint.supplier_intake_cli:main"
 bidlint-supplier-review = "bidlint.supplier_response_cli:main"
+bidlint-supplier-evidence = "bidlint.supplier_evidence_cli:main"
 
 [project.optional-dependencies]
 mcp = ["mcp>=2,<3"]
