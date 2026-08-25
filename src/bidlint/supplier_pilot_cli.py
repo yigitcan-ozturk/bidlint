@@ -3,7 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .supplier_pilot import prepare_pilot_return, write_pilot_attestation_template, write_portal_readiness
+from .supplier_pilot import write_pilot_attestation_template, write_portal_readiness
+from .supplier_pilot_files import prepare_pilot_return_with_evidence_files
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -20,6 +21,10 @@ def build_parser() -> argparse.ArgumentParser:
     prepare.add_argument("clarification_register", help="source clarification register JSON")
     prepare.add_argument("supplier_response", help="returned supplier response JSON")
     prepare.add_argument("output_dir", help="new directory for pilot return artifacts")
+    prepare.add_argument(
+        "--evidence-map",
+        help="optional local evidence-map JSON; creates evidence-files.json bound to the buyer review",
+    )
 
     attest = subparsers.add_parser(
         "attestation-template",
@@ -53,7 +58,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "prepare-return":
             _require_json(args.clarification_register, "clarification_register")
             _require_json(args.supplier_response, "supplier_response")
-            prepare_pilot_return(args.clarification_register, args.supplier_response, args.output_dir)
+            if args.evidence_map:
+                _require_json(args.evidence_map, "evidence_map")
+            prepare_pilot_return_with_evidence_files(
+                args.clarification_register,
+                args.supplier_response,
+                args.output_dir,
+                evidence_map_path=args.evidence_map,
+            )
             return 0
 
         if args.command == "attestation-template":
