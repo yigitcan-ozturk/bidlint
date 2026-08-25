@@ -104,4 +104,5 @@
 - [x] define buyer-side response ingestion with provenance and explicit human re-review
 - [x] define evidence-adequacy fields for calculations, certificates, test basis and supporting documents
 - [x] define revision/conflict handling for supplier clarification responses and superseded evidence
+- [x] add executable real-supplier return preparation and hosted-portal readiness gate
 - [ ] decide hosted supplier portal scope only after the offline workflow is externally validated
