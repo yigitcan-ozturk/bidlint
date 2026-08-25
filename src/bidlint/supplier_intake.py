@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 from pathlib import Path
@@ -11,6 +12,11 @@ from .models import ComplianceReport
 _RESPONSE_CONTRACT = "bidlint.supplier-clarification-response"
 _RESPONSE_CONTRACT_VERSION = "1"
 _REGISTER_CONTRACT = "bidlint.procurement-clarifications"
+
+
+def _canonical_json_sha256(value: object) -> str:
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _json_for_script(value: object) -> str:
@@ -63,6 +69,7 @@ def supplier_intake_html_from_register(register: dict) -> str:
         "version": __version__,
         "source_register_contract": register["contract"],
         "source_register_contract_version": register.get("contract_version"),
+        "source_register_sha256": _canonical_json_sha256(register),
         "specification": register["specification"],
         "vendor": register["vendor"],
     }
