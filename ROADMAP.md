@@ -94,3 +94,14 @@
 - [x] explicit release gate requiring clean sanitization, human technical approval and immutable baseline replay match
 - [x] validate an external sanitized pilot corpus and convert findings into regression fixtures
 - [x] release bidlint 1.1.0
+
+## v1.2 — supplier collaboration and clarification intake
+- [x] start the `1.2.0.dev0` development line without changing frozen 1.x evaluator semantics
+- [x] convert the stable clarification register into a self-contained offline supplier response form
+- [x] add a structured `bidlint.supplier-clarification-response` response contract
+- [x] keep supplier intake zero-server and zero-upload by default for private pilot use
+- [ ] validate the supplier form with a real sanitized forging / material-offer clarification workflow
+- [ ] define buyer-side response ingestion with provenance and explicit human re-review
+- [ ] define evidence-adequacy fields for calculations, certificates, test basis and supporting documents
+- [ ] define revision/conflict handling for supplier clarification responses and superseded evidence
+- [ ] decide hosted supplier portal scope only after the offline workflow is externally validated
