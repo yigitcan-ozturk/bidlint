@@ -43,26 +43,30 @@ jobs:
           TAG="v${VERSION}"
           TAG_EXISTS=false
 
-          # A stable release may reuse an existing tag only when it already
-          # resolves to this exact main-branch commit. This prevents a stale or
-          # premature tag from silently becoming authoritative release evidence.
           git fetch --force --tags origin
           if git rev-parse --verify --quiet "refs/tags/${TAG}" >/dev/null; then
             TAG_EXISTS=true
             TAG_SHA="$(git rev-list -n 1 "$TAG")"
-            if [[ "$TAG_SHA" != "$GITHUB_SHA" ]]; then
-              echo "::error::${TAG} already exists at ${TAG_SHA}, but this release commit is ${GITHUB_SHA}. Delete or explicitly invalidate the stale tag before releasing."
-              exit 1
-            fi
           fi
 
+          # Once a stable release already exists, later main-branch commits are
+          # expected to move beyond the tagged release commit. Treat that as a
+          # no-op, while still failing closed if the release exists without its tag.
           if gh release view "$TAG" >/dev/null 2>&1; then
             if [[ "$TAG_EXISTS" != "true" ]]; then
               echo "::error::GitHub release ${TAG} exists but its repository tag is missing. Repair release/tag state before retrying."
               exit 1
             fi
-            echo "$TAG already exists and resolves to this exact commit; nothing to do."
+            echo "$TAG already exists at ${TAG_SHA}; current main is ${GITHUB_SHA}. Nothing to release."
             exit 0
+          fi
+
+          # If a release does not exist yet, an existing tag is only valid when
+          # it points to this exact release commit. This preserves the stale /
+          # premature-tag guard used by the stable release workflow.
+          if [[ "$TAG_EXISTS" == "true" && "$TAG_SHA" != "$GITHUB_SHA" ]]; then
+            echo "::error::${TAG} already exists at ${TAG_SHA}, but this release commit is ${GITHUB_SHA}. Delete or explicitly invalidate the stale tag before releasing."
+            exit 1
           fi
 
           NOTES="docs/releases/${TAG}.md"
