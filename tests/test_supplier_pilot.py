@@ -10,6 +10,7 @@ from bidlint.supplier_pilot import (
     pilot_attestation_template,
     prepare_pilot_return,
 )
+from bidlint.supplier_response import ingest_supplier_response
 
 
 def _register() -> dict:
@@ -69,41 +70,18 @@ def _response() -> dict:
 
 
 def _review() -> dict:
-    return {
-        "contract": "bidlint.supplier-clarification-review",
-        "contract_version": "1",
-        "tool": "bidlint",
-        "version": "1.2.0.dev0",
-        "specification": "317L-rfq.pdf",
-        "vendor": "supplier-offer.xlsx",
-        "review_status": "PENDING_REVIEW",
-        "automatic_acceptance": False,
-        "human_review_required": True,
-        "responder": {"name": "Frank", "company": "CSM"},
-        "counts": {"open_items": 1, "responses_present": 1, "evidence_references_present": 1},
-        "provenance": {},
-        "items": [
-            {
-                "requirement_id": "R0001",
-                "category": "BIDDER_CLARIFICATION",
-                "parameter": "material grade",
-                "requirement_text": "Material shall be ASTM A182 F317L",
-                "question": "Please confirm the offered material grade.",
-                "prior_finding_status": "REVIEW",
-                "specification_source": None,
-                "prior_vendor_evidence": None,
-                "supplier_response": "We confirm ASTM A182 F317L.",
-                "offered_value": "ASTM A182 F317L",
-                "offered_unit_or_designation": "ASTM A182 F317L",
-                "evidence_reference": "MTC-001",
-                "supplier_comment": "",
-                "response_present": True,
-                "evidence_reference_present": True,
-                "review_status": "PENDING_REVIEW",
-                "human_review_required": True,
-            }
-        ],
-    }
+    register = _register()
+    response = _response()
+    register_bytes = (json.dumps(register, sort_keys=True) + "\n").encode()
+    response_bytes = (json.dumps(response, sort_keys=True) + "\n").encode()
+    return ingest_supplier_response(
+        register,
+        response,
+        register_bytes=register_bytes,
+        response_bytes=response_bytes,
+        register_name="register.json",
+        response_name="response.json",
+    )
 
 
 def _evidence_review(review: dict) -> dict:
@@ -213,4 +191,15 @@ def test_portal_gate_rejects_tampered_artifact_binding():
     attestation["source_supplier_review_sha256"] = "0" * 64
 
     with pytest.raises(ValueError, match="source_supplier_review_sha256"):
+        evaluate_portal_readiness(review, evidence, history, attestation)
+
+
+def test_portal_gate_rejects_review_without_returned_response_byte_provenance():
+    review = _review()
+    review["provenance"]["supplier_response"]["byte_sha256"] = None
+    evidence = _evidence_review(_review())
+    history = initialize_history(_review(), revision_id="R1", evidence_review=evidence)
+    attestation = pilot_attestation_template(_review(), evidence, history)
+
+    with pytest.raises(ValueError, match="supplier-response byte provenance"):
         evaluate_portal_readiness(review, evidence, history, attestation)
