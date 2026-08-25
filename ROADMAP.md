@@ -106,4 +106,5 @@
 - [x] bind returned supplier evidence files to buyer review with exact byte provenance
 - [x] define revision/conflict handling for supplier clarification responses and superseded evidence
 - [x] add executable real-supplier return preparation and hosted-portal readiness gate
+- [x] add fail-closed pilot workspace status and next-action verification across the supplier artifact chain
 - [ ] decide hosted supplier portal scope only after the offline workflow is externally validated
