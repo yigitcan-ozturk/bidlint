@@ -10,6 +10,7 @@ from .models import ComplianceReport
 
 _RESPONSE_CONTRACT = "bidlint.supplier-clarification-response"
 _RESPONSE_CONTRACT_VERSION = "1"
+_REGISTER_CONTRACT = "bidlint.procurement-clarifications"
 
 
 def _json_for_script(value: object) -> str:
@@ -41,8 +42,19 @@ def _evidence_label(evidence: dict | None) -> str:
     return f"{evidence.get('parameter')}: {raw_value} — {source}"
 
 
-def supplier_intake_html(report: ComplianceReport) -> str:
-    register = clarification_register(report)
+def _validate_register(register: dict) -> None:
+    if register.get("contract") != _REGISTER_CONTRACT:
+        raise ValueError(f"supplier intake requires {_REGISTER_CONTRACT} input")
+    if not isinstance(register.get("bidder_clarifications"), list):
+        raise ValueError("clarification register is missing bidder_clarifications")
+    if not isinstance(register.get("unanswered_requirements"), list):
+        raise ValueError("clarification register is missing unanswered_requirements")
+    if not register.get("specification") or not register.get("vendor"):
+        raise ValueError("clarification register must include specification and vendor")
+
+
+def supplier_intake_html_from_register(register: dict) -> str:
+    _validate_register(register)
     items = register["bidder_clarifications"] + register["unanswered_requirements"]
     metadata = {
         "contract": _RESPONSE_CONTRACT,
@@ -50,7 +62,7 @@ def supplier_intake_html(report: ComplianceReport) -> str:
         "tool": "bidlint",
         "version": __version__,
         "source_register_contract": register["contract"],
-        "source_register_contract_version": register["contract_version"],
+        "source_register_contract_version": register.get("contract_version"),
         "specification": register["specification"],
         "vendor": register["vendor"],
     }
@@ -105,12 +117,14 @@ def supplier_intake_html(report: ComplianceReport) -> str:
             "<p>The comparison contains no REVIEW or MISSING findings.</p></section>"
         )
 
+    specification = html.escape(str(register["specification"]))
+    vendor = html.escape(str(register["vendor"]))
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BidLint Supplier Clarification — {html.escape(report.vendor)}</title>
+<title>BidLint Supplier Clarification — {vendor}</title>
 <style>
 :root {{ font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #172033; background: #f4f6f8; }}
 body {{ margin: 0; }}
@@ -142,8 +156,8 @@ small {{ color: #667085; }}
   <h1>BidLint Supplier Clarification</h1>
   <p>Offline response form generated from deterministic BidLint findings.</p>
   <div class="meta">
-    <div><small>Specification</small><br><strong>{html.escape(report.specification)}</strong></div>
-    <div><small>Vendor</small><br><strong>{html.escape(report.vendor)}</strong></div>
+    <div><small>Specification</small><br><strong>{specification}</strong></div>
+    <div><small>Vendor</small><br><strong>{vendor}</strong></div>
     <div><small>Open items</small><br><strong>{len(items)}</strong></div>
   </div>
   <div class="notice"><strong>Privacy:</strong> this file makes no network requests and does not upload responses anywhere. Complete it locally, then use <em>Download response JSON</em> and return that file through your normal approved channel.</div>
@@ -203,6 +217,14 @@ function downloadResponse() {{
 </body>
 </html>
 """
+
+
+def supplier_intake_html(report: ComplianceReport) -> str:
+    return supplier_intake_html_from_register(clarification_register(report))
+
+
+def write_supplier_intake_from_register(register: dict, path: str | Path) -> None:
+    Path(path).write_text(supplier_intake_html_from_register(register), encoding="utf-8")
 
 
 def write_supplier_intake(report: ComplianceReport, path: str | Path) -> None:
