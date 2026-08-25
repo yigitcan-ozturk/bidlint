@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -57,16 +58,20 @@ def _register() -> dict:
 def test_supplier_intake_cli_writes_offline_html(tmp_path: Path):
     source = tmp_path / "clarifications.json"
     output = tmp_path / "supplier-intake.html"
-    source.write_text(json.dumps(_register()), encoding="utf-8")
+    register = _register()
+    source.write_text(json.dumps(register), encoding="utf-8")
 
     assert main([str(source), str(output)]) == 0
 
     rendered = output.read_text(encoding="utf-8")
+    canonical = json.dumps(register, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    expected_digest = hashlib.sha256(canonical).hexdigest()
     assert "BidLint Supplier Clarification" in rendered
     assert "R0001" in rendered
     assert "R0002" in rendered
     assert "Download response JSON" in rendered
     assert "bidlint.supplier-clarification-response" in rendered
+    assert f'"source_register_sha256":"{expected_digest}"' in rendered
     assert "fetch(" not in rendered
     assert "XMLHttpRequest" not in rendered
 
