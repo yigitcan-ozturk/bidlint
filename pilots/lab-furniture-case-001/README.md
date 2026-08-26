@@ -146,6 +146,28 @@ Checkpoint:
 
 After freeze, buyer-only mapping may reveal the supplier identities for negotiation and award.
 
+## Executable pilot controls
+
+The pilot branch adds two fail-closed local controls. They persist hashes and blind IDs, not confidential source names or paths.
+
+Create an anonymous source provenance manifest:
+
+```text
+bidlint-lab-pilot source-manifest source-map.json source-manifest.json
+```
+
+`source-map.json` contains buyer-local paths plus stable anonymous IDs/roles. The generated manifest records exact byte SHA-256 and byte length while setting `source_paths_persisted=false`, `source_names_persisted=false`, `content_interpreted=false` and `affects_evaluator=false`.
+
+Freeze the blind decision artifacts before any buyer-only identity reveal:
+
+```text
+bidlint-lab-pilot blind-freeze freeze-map.json blind-freeze.json
+```
+
+The freeze requires blind supplier IDs (`Supplier-A`, etc.) and exact artifacts for technical compliance, commercial normalization and material fit. It emits `BLIND_SCORE_FREEZE_001`, binds exact bytes/canonical JSON hashes, keeps `automatic_award=false`, keeps `automatic_identity_reveal=false`, requires human review and does not change evaluator semantics.
+
+These controls establish provenance and sequence only. They do not interpret technical evidence, normalize prices automatically, select materials, approve suppliers or make contractual decisions.
+
 ## Pilot outputs
 
 Required outputs:
