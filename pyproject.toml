@@ -42,6 +42,7 @@ bidlint-supplier-evidence = "bidlint.supplier_evidence_cli:main"
 bidlint-supplier-files = "bidlint.supplier_files_cli:main"
 bidlint-supplier-history = "bidlint.supplier_history_cli:main"
 bidlint-supplier-pilot = "bidlint.supplier_pilot_cli:main"
+bidlint-lab-pilot = "bidlint.lab_pilot_cli:main"
 
 [project.optional-dependencies]
 mcp = ["mcp>=2,<3"]
