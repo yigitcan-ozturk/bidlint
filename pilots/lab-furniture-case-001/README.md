@@ -1,6 +1,6 @@
 # Lab Furniture Case 001 — Blind Evaluation Pilot
 
-Status: ACTIVE PILOT
+Status: ACTIVE PILOT — EXECUTABLE PROVENANCE/FREEZE CONTROLS ADDED
 
 ## Purpose
 
