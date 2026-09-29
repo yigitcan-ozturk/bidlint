@@ -156,6 +156,7 @@ def ingest_supplier_response(
     response_name: str | None = None,
 ) -> dict:
     register_items = _validate_register(register)
+    response = _normalize_dispatched_pilot_response(register, register_items, response)
     response_items = _validate_response(response)
 
     if response["specification"] != register["specification"]:
