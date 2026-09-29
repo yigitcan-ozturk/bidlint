@@ -215,7 +215,7 @@ def test_supplier_review_accepts_dispatched_legacy_pilot_shape_without_mutating_
     response_path = tmp_path / "supplier-response.json"
     output_path = tmp_path / "buyer-review.json"
     register_path.write_text(json.dumps(register), encoding="utf-8")
-    response_bytes = (json.dumps(response, indent=2) + "\\n").encode("utf-8")
+    response_bytes = (json.dumps(response, indent=2) + "\n").encode("utf-8")
     response_path.write_bytes(response_bytes)
 
     assert main([str(register_path), str(response_path), str(output_path)]) == 0
