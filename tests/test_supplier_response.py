@@ -197,3 +197,44 @@ def test_supplier_review_rejects_mutated_item_identity(tmp_path: Path):
 
     with pytest.raises(SystemExit, match="supplier response parameter mismatch for R0001"):
         main([str(register_path), str(response_path), str(output_path)])
+
+
+def test_supplier_review_accepts_dispatched_legacy_pilot_shape_without_mutating_source_bytes(tmp_path: Path):
+    register = _register()
+    response = _response()
+    response.pop("tool")
+    response.pop("version")
+    response.pop("source_register_contract")
+    response.pop("source_register_contract_version")
+    response.pop("response_count")
+    response["pilot"] = "SS317L-RFQ-CSM-TECH"
+    for item in response["responses"]:
+        item.pop("category")
+
+    register_path = tmp_path / "clarifications.json"
+    response_path = tmp_path / "supplier-response.json"
+    output_path = tmp_path / "buyer-review.json"
+    register_path.write_text(json.dumps(register), encoding="utf-8")
+    response_bytes = (json.dumps(response, indent=2) + "\n").encode("utf-8")
+    response_path.write_bytes(response_bytes)
+
+    assert main([str(register_path), str(response_path), str(output_path)]) == 0
+    review = json.loads(output_path.read_text(encoding="utf-8"))
+    assert review["counts"]["open_items"] == 2
+    assert review["items"][0]["category"] == "BIDDER_CLARIFICATION"
+    assert review["items"][1]["category"] == "UNANSWERED_REQUIREMENT"
+    assert review["provenance"]["supplier_response"]["byte_sha256"] == hashlib.sha256(response_bytes).hexdigest()
+    assert review["provenance"]["source_register_binding"]["mechanism"] == "structural-metadata-and-item-identity"
+
+
+def test_supplier_review_does_not_relax_nonpilot_response_contract(tmp_path: Path):
+    response = _response()
+    response.pop("source_register_contract")
+    register_path = tmp_path / "clarifications.json"
+    response_path = tmp_path / "supplier-response.json"
+    output_path = tmp_path / "buyer-review.json"
+    register_path.write_text(json.dumps(_register()), encoding="utf-8")
+    response_path.write_text(json.dumps(response), encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="source_register_contract does not match"):
+        main([str(register_path), str(response_path), str(output_path)])
