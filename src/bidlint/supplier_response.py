@@ -65,6 +65,45 @@ def _validate_register(register: dict) -> list[dict]:
     return items
 
 
+def _normalize_dispatched_pilot_response(register: dict, register_items: list[dict], response: dict) -> dict:
+    """Normalize only the known pre-hardening offline pilot response shape.
+
+    The exact supplier-return bytes remain preserved by provenance; normalization is
+    an in-memory compatibility view used for deterministic buyer-side ingestion.
+    """
+    legacy = (
+        isinstance(response.get("pilot"), str)
+        and "source_register_contract" not in response
+        and "source_register_contract_version" not in response
+        and "response_count" not in response
+    )
+    if not legacy:
+        return response
+
+    normalized = dict(response)
+    normalized["source_register_contract"] = _REGISTER_CONTRACT
+    normalized["source_register_contract_version"] = "1"
+    responses = response.get("responses")
+    if not isinstance(responses, list):
+        return normalized
+    normalized["response_count"] = len(responses)
+
+    register_by_id = {item.get("requirement_id"): item for item in register_items}
+    normalized_items: list[dict] = []
+    for raw_item in responses:
+        if not isinstance(raw_item, dict):
+            normalized_items.append(raw_item)
+            continue
+        item = dict(raw_item)
+        requirement_id = item.get("requirement_id")
+        register_item = register_by_id.get(requirement_id)
+        if "category" not in item and isinstance(register_item, dict):
+            item["category"] = register_item.get("category")
+        normalized_items.append(item)
+    normalized["responses"] = normalized_items
+    return normalized
+
+
 def _validate_response(response: dict) -> list[dict]:
     if response.get("contract") != _RESPONSE_CONTRACT:
         raise ValueError(f"supplier response requires {_RESPONSE_CONTRACT} contract")
