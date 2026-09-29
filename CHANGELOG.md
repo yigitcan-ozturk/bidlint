@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.2.0 — 2026-09-29
+
+### Added
+
+- offline supplier clarification intake with source-register digest binding and validated response hand-off
+- buyer-side supplier response ingestion with provenance-preserving review workflow
+- explicit supplier evidence-adequacy assessment that remains separate from deterministic compliance status
+- immutable append-only supplier revision history and explicit conflict representation
+- deterministic supplier-response readiness preflight and executable private pilot workspace
+- evidence-file manifests with exact byte provenance and requirement-level reference validation
+- cryptographic evidence-manifest binding through buyer review, pilot packaging, attestation and portal-readiness gate
+- fail-closed supplier pilot workspace status with deterministic next-action reporting
+- executable blind lab-furniture pilot provenance and freeze controls for a second production-shaped validation path
+
+### Changed
+
+- supplier collaboration remains offline/private-first; no hosted supplier portal is claimed by this release
+- incomplete supplier forms fail validation before return packaging
+- file-backed evidence cannot be substituted after review without invalidating downstream pilot bindings
+- supplier workflow state, evidence adequacy and portal readiness do not alter the frozen BidLint 1.x `PASS / DEVIATION / MISSING / REVIEW` semantics
+- package/runtime version is frozen at `1.2.0`
+
+### Validation boundary
+
+- the v1.2 implementation path is covered by dedicated supplier intake, response, readiness, evidence, history, evidence-binding, pilot, workspace and blind-pilot regression suites
+- the real supplier return tracked in issue #72 remains a private external-validation gate; hosted portal scope stays deferred until that exact artifact completes the executable workflow
+- release readiness does not imply supplier approval, contractual acceptance or portal deployment approval
+
 ## 1.1.0 — 2026-08-22
 
 ### Added
