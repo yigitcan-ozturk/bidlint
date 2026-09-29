@@ -15,6 +15,17 @@
 >
 > v1.1.0 completes the production-adoption milestone after an approved external sanitized pilot, explicit human/domain review and an exact approved-baseline replay. The frozen 1.x compliance semantics remain unchanged.
 
+## Proof at a glance
+
+| Signal | Evidence |
+| --- | --- |
+| **Stable release** | **v1.1.0** |
+| **Decision contract** | Frozen 1.x `PASS / DEVIATION / MISSING / REVIEW` semantics |
+| **External pilot** | Approved sanitized pilot with explicit human/domain review |
+| **Release gate** | `release_ready=true`, `failure_count=0`, exact approved-baseline replay |
+| **Quality** | Python 3.11–3.13, package/CLI smoke, dependency audit, benchmark and profiling gates |
+| **Safety boundary** | Unsupported or ambiguous evidence remains reviewable instead of becoming fabricated certainty |
+
 ## Why BidLint
 
 Technical bid evaluation is often performed by reading specifications and vendor submissions side-by-side, copying values into spreadsheets and manually tracking deviations. BidLint narrows the problem to three auditable questions:
