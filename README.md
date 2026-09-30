@@ -11,18 +11,18 @@
 
 `bidlint` is an open-source, deterministic technical-bid compliance engine. It compares engineering specifications with vendor datasheets, submittals, multi-document packages, explicit XLSX offer tables and explicitly scoped IFC properties while preserving source evidence.
 
-> **Latest stable release: v1.1.0**
+> **Latest stable release: v1.2.1**
 >
-> v1.1.0 completes the production-adoption milestone after an approved external sanitized pilot, explicit human/domain review and an exact approved-baseline replay. The frozen 1.x compliance semantics remain unchanged.
+> v1.2 adds an offline, privacy-preserving supplier clarification workflow around the frozen 1.x compliance semantics: buyer-side response ingestion, evidence adequacy, immutable supplier revision history, readiness preflight, cryptographic evidence binding and fail-closed portal-scope gates. v1.2.1 preserves compatibility with the supplier form already dispatched in a real external workflow; the live return exposed the gap and the fix preserves the exact returned supplier artifact in provenance.
 
 ## Proof at a glance
 
 | Signal | Evidence |
 | --- | --- |
-| **Stable release** | **v1.1.0** |
+| **Stable release** | **v1.2.1** |
 | **Decision contract** | Frozen 1.x `PASS / DEVIATION / MISSING / REVIEW` semantics |
-| **External pilot** | Approved sanitized pilot with explicit human/domain review |
-| **Release gate** | `release_ready=true`, `failure_count=0`, exact approved-baseline replay |
+| **External use** | Real supplier clarification workflow exercised; confidential supplier data remains private |
+| **Supplier assurance** | Exact response-byte provenance, evidence adequacy, immutable history and fail-closed readiness checks |
 | **Quality** | Python 3.11–3.13, package/CLI smoke, dependency audit, benchmark and profiling gates |
 | **Safety boundary** | Unsupported or ambiguous evidence remains reviewable instead of becoming fabricated certainty |
 
@@ -49,10 +49,10 @@ These meanings, together with the 1.x scoring and public CLI/error contract, are
 
 Requirements: Python 3.11+ and text-based PDFs for PDF extraction. IFC support is optional.
 
-Install the stable **v1.1.0** release directly from GitHub — no repository clone required:
+Install the stable **v1.2.1** release directly from GitHub — no repository clone required:
 
 ```bash
-python -m pip install "bidlint @ git+https://github.com/yigitcan-ozturk/bidlint.git@v1.1.0"
+python -m pip install "bidlint @ git+https://github.com/yigitcan-ozturk/bidlint.git@v1.2.1"
 ```
 
 Verify the CLI:
@@ -141,6 +141,16 @@ bidlint-pilot-gate ./pilot --json
 The release gate requires a blocker-free sanitization scan, explicit human sanitization and technical approval, review of non-PASS outcomes, regression coverage for known product defects and an exact approved-baseline replay. The final external sanitized pilot completed that gate with `release_ready=true`, `failure_count=0` and an exact baseline/replay match.
 
 See [`docs/releases/v1.1.0.md`](docs/releases/v1.1.0.md), [`docs/PRODUCTION_ADOPTION.md`](docs/PRODUCTION_ADOPTION.md), [`docs/PILOT_SANITIZATION.md`](docs/PILOT_SANITIZATION.md), [`docs/PILOT_RELEASE_GATE.md`](docs/PILOT_RELEASE_GATE.md) and [`docs/PILOT_BASELINES.md`](docs/PILOT_BASELINES.md).
+
+## v1.2 supplier clarification workflow
+
+BidLint can carry unresolved technical requirements into an offline supplier clarification loop without turning supplier statements into automatic compliance decisions.
+
+The buyer-side workflow preserves the returned artifact, binds it to the originating clarification register, records evidence adequacy separately from response presence, and keeps human review mandatory. Supplier revisions are append-only, and readiness checks fail closed when required answers or structural bindings are missing.
+
+A real external supplier return exercised this path and exposed a compatibility gap between the already-dispatched form and the later hardened ingestion contract. **v1.2.1 fixes that gap with narrowly scoped, deterministic normalization while preserving the exact returned supplier bytes in provenance.** No confidential supplier response content is published in the repository.
+
+See [`docs/SUPPLIER_PILOT_EXECUTION.md`](docs/SUPPLIER_PILOT_EXECUTION.md) and the [v1.2.1 release](https://github.com/yigitcan-ozturk/bidlint/releases/tag/v1.2.1).
 
 ## Optional integrations
 
