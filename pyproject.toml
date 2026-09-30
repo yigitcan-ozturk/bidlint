@@ -47,7 +47,7 @@ bidlint-lab-pilot = "bidlint.lab_pilot_cli:main"
 [project.optional-dependencies]
 mcp = ["mcp>=2,<3"]
 ifc = ["ifcopenshell>=0.8,<0.9"]
-dev = ["pytest>=8", "ruff>=0.12,<0.16", "reportlab>=4", "mcp>=2,<3"]
+dev = ["pytest>=8", "ruff>=0.12,<0.17", "reportlab>=4", "mcp>=2,<3"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
