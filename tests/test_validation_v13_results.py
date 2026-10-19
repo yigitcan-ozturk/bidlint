@@ -53,3 +53,15 @@ def test_invalid_case_rejected(changes):
 def test_duplicate_case_id_rejected():
     with pytest.raises(ValueError):
         module.evaluate({"cases": [case(), case()]})
+
+
+def test_synthetic_selfcheck_fixture_detects_negative_controls():
+    import json
+    fixture = Path(__file__).resolve().parents[1] / "validation" / "fixtures" / "v13_harness_selfcheck.json"
+    result = module.evaluate(json.loads(fixture.read_text(encoding="utf-8")))
+    assert result["total"] == 6
+    assert result["passed"] == 4
+    assert result["by_source"]["synthetic"]["incorrect"] == 2
+    assert result["by_source"]["synthetic"]["nonrepeatable"] == 1
+    assert result["by_source"]["synthetic"]["unverified_evidence"] == 1
+    assert result["release_gate_passed"] is False
