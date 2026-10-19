@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "description": "Synthetic harness self-check fixtures, not BidLint engine outputs",
+  "cases": [
+    {
+      "id": "S-001",
+      "source_type": "synthetic",
+      "expected": "PASS",
+      "runs": [
+        "PASS",
+        "PASS"
+      ],
+      "evidence_verified": true
+    },
+    {
+      "id": "S-002",
+      "source_type": "synthetic",
+      "expected": "DEVIATION",
+      "runs": [
+        "DEVIATION",
+        "DEVIATION"
+      ],
+      "evidence_verified": true
+    },
+    {
+      "id": "S-003",
+      "source_type": "synthetic",
+      "expected": "MISSING",
+      "runs": [
+        "MISSING",
+        "MISSING"
+      ],
+      "evidence_verified": true
+    },
+    {
+      "id": "S-004",
+      "source_type": "synthetic",
+      "expected": "REVIEW",
+      "runs": [
+        "REVIEW",
+        "REVIEW"
+      ],
+      "evidence_verified": true
+    },
+    {
+      "id": "S-005",
+      "source_type": "synthetic",
+      "expected": "REVIEW",
+      "runs": [
+        "PASS",
+        "PASS"
+      ],
+      "evidence_verified": false
+    },
+    {
+      "id": "S-006",
+      "source_type": "synthetic",
+      "expected": "PASS",
+      "runs": [
+        "PASS",
+        "REVIEW"
+      ],
+      "evidence_verified": true
+    }
+  ]
+}
